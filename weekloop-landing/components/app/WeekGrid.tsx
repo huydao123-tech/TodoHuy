@@ -47,6 +47,8 @@ function GoalCard({
   onRemoveFromWeek,
   onSaveGoal,
   onAddItem,
+  onUpdateItem,
+  onDeleteItem,
   onCycleStatus,
 }: {
   groupId: number;
@@ -548,6 +550,8 @@ function WeekColumn({
   onOpenCreateGroupModal,
   onSaveGoal,
   onAddItem,
+  onUpdateItem,
+  onDeleteItem,
   onCycleStatus,
 }: {
   absoluteOffset: number;
@@ -562,6 +566,8 @@ function WeekColumn({
   onOpenCreateGroupModal?: () => void;
   onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
   onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
+  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, content: string) => void;
+  onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
 }) {
   const reduce = useReducedMotion();
@@ -671,6 +677,8 @@ function WeekColumn({
                   onRemoveFromWeek={onRemoveFromWeek}
                   onSaveGoal={onSaveGoal}
                   onAddItem={onAddItem}
+                  onUpdateItem={onUpdateItem}
+                  onDeleteItem={onDeleteItem}
                   onCycleStatus={onCycleStatus}
                 />
               </motion.div>
@@ -871,6 +879,8 @@ export interface WeekGridProps {
   onOpenCreateGroupModal?: () => void;
   onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
   onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
+  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, content: string) => void;
+  onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
 }
 
@@ -885,6 +895,8 @@ export default function WeekGrid({
   onOpenCreateGroupModal,
   onSaveGoal,
   onAddItem,
+  onUpdateItem,
+  onDeleteItem,
   onCycleStatus,
 }: WeekGridProps) {
   const cols: { colOffset: -1 | 0 | 1 }[] = [
@@ -916,6 +928,8 @@ export default function WeekGrid({
           onOpenCreateGroupModal={onOpenCreateGroupModal}
           onSaveGoal={onSaveGoal}
           onAddItem={onAddItem}
+          onUpdateItem={onUpdateItem}
+          onDeleteItem={onDeleteItem}
           onCycleStatus={onCycleStatus}
         />
       ))}
