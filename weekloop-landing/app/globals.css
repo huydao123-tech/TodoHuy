@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* ─── DESIGN TOKENS ─────────────────────────────────────── */
+:root {
+  /* Palette — light theme locked */
+  --bg:          #FAFAFA;   /* zinc-50 */
+  --bg-alt:      #F4F4F5;   /* zinc-100 */
+  --bg-dark:     #18181B;   /* zinc-900, footer/nav */
+  --text:        #18181B;   /* zinc-900 */
+  --text-muted:  #71717A;   /* zinc-500 */
+  --text-faint:  #A1A1AA;   /* zinc-400 */
+  --border:      #E4E4E7;   /* zinc-200 */
+  --border-mid:  #D4D4D8;   /* zinc-300 */
+
+  /* Accent — forest green, single accent, locked */
+  --accent:      #16A34A;   /* green-600 */
+  --accent-dark: #15803D;   /* green-700 */
+  --accent-bg:   #DCFCE7;   /* green-100 */
+
+  /* Radius system — all-soft, 8px base */
+  --radius-sm:   4px;
+  --radius:      8px;
+  --radius-lg:   12px;
+  --radius-pill: 9999px;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground:  var(--text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ─── BASE ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── TYPOGRAPHY SCALE ───────────────────────────────────── */
+.text-display {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 560;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.text-headline {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 540;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.text-body-lg {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+
+/* ─── INTERACTIVE ────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 520;
+  padding: 0.625rem 1.375rem;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+.btn-primary:hover  { background: var(--accent-dark); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  font-weight: 480;
+  padding: 0.625rem 1.125rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+.btn-ghost:hover  { border-color: var(--border-mid); color: var(--text); }
+.btn-ghost:active { transform: scale(0.98); }
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .container { padding-inline: 2.5rem; }
+}
+
+@media (min-width: 1280px) {
+  .container { padding-inline: 3rem; }
+}
+
+/* ─── SECTION SPACING ────────────────────────────────────── */
+.section-pad {
+  padding-block: 5rem;
+}
+
+@media (min-width: 768px) {
+  .section-pad { padding-block: 7rem; }
+}
+
+/* ─── DIVIDER ────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
