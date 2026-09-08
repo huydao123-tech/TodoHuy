@@ -34,20 +34,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String token = parseJwt(request);
-        if (token != null && jwtUtils.validateToken(token)) {
-            String email = jwtUtils.extractEmail(token);
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                CustomUserDetails user = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
-                UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                        user,
-                        null,
-                        user.getAuthorities()
-                    );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            String token = parseJwt(request);
+            if (token != null && jwtUtils.validateToken(token)) {
+                String email = jwtUtils.extractEmail(token);
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    CustomUserDetails user = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+                    UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                            user,
+                            null,
+                            user.getAuthorities()
+                        );
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
+        } catch (Exception e) {
+            logger.warn("Cannot authenticate user from token: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
