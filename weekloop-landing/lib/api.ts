@@ -41,17 +41,24 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   const baseUrl = getBaseUrl();
   let response: Response;
 
+  // Render free tier cần tới 60-90s để thức giấc từ chế độ ngủ đông (cold start)
+  const isRenderOrRemote = baseUrl.includes("render.com") || baseUrl.startsWith("https://");
+  const timeoutMs = isRenderOrRemote ? 90000 : 15000;
+
   try {
     response = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers,
-      signal: options.signal || (AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined),
+      signal: options.signal || (AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined),
     });
   } catch (err: any) {
     if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+      if (isRenderOrRemote) {
+        throw new Error("Máy chủ Render đang khởi động lại từ chế độ ngủ đông (thường mất ~1 phút). Vui lòng đợi 30 giây rồi bấm lại!");
+      }
       throw new Error("Quá thời gian kết nối (Timeout). Vui lòng kiểm tra xem Backend đã khởi động chưa!");
     }
-    throw new Error(`Không thể kết nối đến Backend (${baseUrl}). Hãy đảm bảo Backend Spring Boot (port 8080) đang chạy!`);
+    throw new Error(`Không thể kết nối đến máy chủ (${baseUrl}). Vui lòng kiểm tra lại đường truyền mạng hoặc cấu hình API URL!`);
   }
 
   if (!response.ok) {
