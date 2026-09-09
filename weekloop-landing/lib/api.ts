@@ -1,6 +1,13 @@
-// API client cho WeekLoop kết nối tới Backend Spring Boot (http://localhost:8080)
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+export function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined") {
+    // Nếu truy cập qua IP mạng LAN (ví dụ trên điện thoại) hoặc localhost
+    return `http://${window.location.hostname}:8080`;
+  }
+  return "http://localhost:8080";
+}
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -31,10 +38,21 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const baseUrl = getBaseUrl();
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal || (AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined),
+    });
+  } catch (err: any) {
+    if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+      throw new Error("Quá thời gian kết nối (Timeout). Vui lòng kiểm tra xem Backend đã khởi động chưa!");
+    }
+    throw new Error(`Không thể kết nối đến Backend (${baseUrl}). Hãy đảm bảo Backend Spring Boot (port 8080) đang chạy!`);
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
