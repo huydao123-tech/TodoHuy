@@ -1174,7 +1174,7 @@ export default function Dashboard() {
             </div>
 
             <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0 0 1rem" }}>
-              Các đầu việc đã xóa mềm. Khôi phục sẽ hiển thị lại đầu việc và công việc con trong tuần.
+              Các đầu việc đã xóa mềm. Khôi phục sẽ hiển thị lại đầu việc và danh sách công việc trong tuần.
             </p>
 
             <div style={{ overflowY: "auto", flex: 1, marginBottom: "1rem" }}>

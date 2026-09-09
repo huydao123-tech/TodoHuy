@@ -70,26 +70,14 @@ function GoalCard({
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
-  const fallbackGoal = getGoalText(groupId, absoluteOffset);
   const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
-
-  const currentGoal = goal !== undefined ? goal : fallbackGoal;
   const currentItems = workItems !== undefined ? workItems : fallbackWorkItems;
-
-  const [goalText, setGoalText] = useState(currentGoal);
-  const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [editGoalVal, setEditGoalVal] = useState(currentGoal);
 
   const [localItems, setLocalItems] = useState<WorkItemData[]>(currentItems);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editItemVal, setEditItemVal] = useState("");
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemText, setNewItemText] = useState("");
-
-  useEffect(() => {
-    setGoalText(currentGoal);
-    setEditGoalVal(currentGoal);
-  }, [currentGoal]);
 
   useEffect(() => {
     setLocalItems(currentItems);
@@ -109,15 +97,6 @@ function GoalCard({
       onCycleStatus(groupId, absoluteOffset, id);
     }
   }, [isPast, groupId, absoluteOffset, onCycleStatus]);
-
-  const handleSaveGoal = () => {
-    const trimmed = editGoalVal.trim();
-    setGoalText(trimmed);
-    setIsEditingGoal(false);
-    if (onSaveGoal) {
-      onSaveGoal(groupId, absoluteOffset, trimmed);
-    }
-  };
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,90 +193,21 @@ function GoalCard({
         )}
       </div>
 
-      {/* Mục tiêu tuần (Weekly Goal) */}
-      <div
-        style={{
-          padding: "0.5rem 0.75rem",
-          borderBottom: localItems.length > 0 || isAddingItem ? "1px solid var(--border)" : "none",
-          minHeight: 38,
-        }}
-      >
-        {isEditingGoal && !isPast ? (
-          <div style={{ display: "flex", gap: "0.375rem" }}>
-            <input
-              type="text"
-              value={editGoalVal}
-              onChange={(e) => setEditGoalVal(e.target.value)}
-              placeholder="Nhập mục tiêu tuần..."
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveGoal();
-                if (e.key === "Escape") setIsEditingGoal(false);
-              }}
-              style={{
-                fontSize: "0.8125rem",
-                padding: "0.2rem 0.4rem",
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--accent)",
-                outline: "none",
-                width: "100%",
-              }}
-            />
-            <button
-              onClick={handleSaveGoal}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "var(--radius)",
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Lưu
-            </button>
-          </div>
-        ) : (
-          <div
-            onClick={() => {
-              if (!isPast) {
-                setEditGoalVal(goalText);
-                setIsEditingGoal(true);
-              }
-            }}
-            title={isPast ? undefined : "Nhấp để chỉnh sửa mục tiêu tuần"}
-            style={{ cursor: isPast ? "default" : "pointer" }}
-          >
-            {goalText ? (
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--text-muted)",
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                {goalText}
-              </p>
-            ) : (
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--text-faint)",
-                  fontStyle: "italic",
-                  margin: 0,
-                }}
-              >
-                {isPast ? "Không có mục tiêu tuần" : "Nhấp để đặt mục tiêu tuần..."}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Khi chưa có công việc nào và không mở form thêm */}
+      {localItems.length === 0 && !isAddingItem && (
+        <div
+          style={{
+            padding: "0.625rem 0.75rem",
+            color: "var(--text-faint)",
+            fontSize: "0.78125rem",
+            fontStyle: "italic",
+          }}
+        >
+          {isPast ? "Không có công việc nào" : "Chưa có công việc nào trong tuần này"}
+        </div>
+      )}
 
-      {/* Danh sách công việc con (Work Items) */}
+      {/* Danh sách công việc (Work Items) */}
       {localItems.length > 0 && (
         <div style={{ padding: "0.375rem 0.75rem 0" }}>
           {localItems.map((item) => {
@@ -520,7 +430,7 @@ function GoalCard({
             type="text"
             value={newItemText}
             onChange={(e) => setNewItemText(e.target.value)}
-            placeholder="Tên công việc con..."
+            placeholder="Nhập tên công việc..."
             autoFocus
             style={{
               fontSize: "0.8rem",

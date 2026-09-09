@@ -28,18 +28,7 @@ CREATE TABLE task_groups (
     INDEX idx_task_groups_active (user_id, is_archived, display_order)
 ) ENGINE=InnoDB;
 
--- ========== 3. WEEKLY_GOALS (Mục tiêu tuần theo đầu việc) ==========
-CREATE TABLE weekly_goals (
-    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    task_group_id   BIGINT NOT NULL,
-    week_start_date DATE NOT NULL,
-    goal_text       VARCHAR(255),
-    CONSTRAINT fk_weekly_goals_group FOREIGN KEY (task_group_id) REFERENCES task_groups(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_weekly_goals (task_group_id, week_start_date),
-    INDEX idx_weekly_goals_week (week_start_date)
-) ENGINE=InnoDB;
-
--- ========== 4. WORK_ITEMS (Công việc con trong tuần) ==========
+-- ========== 3. WORK_ITEMS (Tất cả các task / công việc trong tuần - Ngang hàng nhau) ==========
 CREATE TABLE work_items (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_group_id   BIGINT NOT NULL,
@@ -51,6 +40,17 @@ CREATE TABLE work_items (
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_work_items_group FOREIGN KEY (task_group_id) REFERENCES task_groups(id) ON DELETE CASCADE,
     INDEX idx_work_items_group_week (task_group_id, week_start_date)
+) ENGINE=InnoDB;
+
+-- ========== 4. WEEKLY_GOALS (Mục tiêu tổng quát của tuần - Tùy chọn) ==========
+CREATE TABLE weekly_goals (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_group_id   BIGINT NOT NULL,
+    week_start_date DATE NOT NULL,
+    goal_text       VARCHAR(255),
+    CONSTRAINT fk_weekly_goals_group FOREIGN KEY (task_group_id) REFERENCES task_groups(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_weekly_goals (task_group_id, week_start_date),
+    INDEX idx_weekly_goals_week (week_start_date)
 ) ENGINE=InnoDB;
 
 -- ========== 5. SIDE_TASKS (Đầu việc phụ, checklist nhanh) ==========
