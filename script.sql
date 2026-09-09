@@ -46,7 +46,7 @@ CREATE TABLE work_items (
     week_start_date DATE NOT NULL,
     content         VARCHAR(255) NOT NULL,
     status          ENUM('TODO', 'IN_PROGRESS', 'DONE') NOT NULL DEFAULT 'TODO',
-    note            VARCHAR(255),
+    note            TEXT, -- Nội dung ghi chú chi tiết của task (hỗ trợ nhiều dòng, link, markdown)
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_work_items_group FOREIGN KEY (task_group_id) REFERENCES task_groups(id) ON DELETE CASCADE,
@@ -90,3 +90,9 @@ CREATE TABLE notes (
     CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_notes_user (user_id)
 ) ENGINE=InnoDB;
+
+-- =========================================================================
+-- HƯỚNG DẪN MIGRATION DATABASE ĐANG CHẠY (TiDB Cloud / MySQL Render):
+-- Nếu database đã được tạo trước đó với note VARCHAR(255), hãy chạy lệnh này:
+-- =========================================================================
+-- ALTER TABLE work_items MODIFY COLUMN note TEXT;

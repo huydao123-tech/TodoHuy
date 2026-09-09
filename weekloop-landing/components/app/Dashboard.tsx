@@ -8,6 +8,7 @@ import {
   type TaskGroup,
   type ResourceData,
   type WorkItemData,
+  type WorkItemStatus,
   TASK_GROUPS,
   INITIAL_SIDE_TASKS,
   RESOURCES,
@@ -379,17 +380,27 @@ export default function Dashboard() {
     }));
   }, []);
 
-  const handleUpdateItem = useCallback((groupId: number, offset: number, itemId: number, content: string) => {
-    const key = `${groupId}:${offset}`;
-    setWorkItemsMap((prev) => ({
-      ...prev,
-      [key]: (prev[key] ?? []).map((item) => {
-        if (item.id !== itemId) return item;
-        return { ...item, content };
-      }),
-    }));
-    workItemApi.update(itemId, { content }).catch(() => {});
-  }, []);
+  const handleUpdateItem = useCallback(
+    (
+      groupId: number,
+      offset: number,
+      itemId: number,
+      updates: { content?: string; note?: string; status?: WorkItemStatus } | string
+    ) => {
+      const key = `${groupId}:${offset}`;
+      const payload = typeof updates === "string" ? { content: updates } : updates;
+
+      setWorkItemsMap((prev) => ({
+        ...prev,
+        [key]: (prev[key] ?? []).map((item) => {
+          if (item.id !== itemId) return item;
+          return { ...item, ...payload };
+        }),
+      }));
+      workItemApi.update(itemId, payload).catch(() => {});
+    },
+    []
+  );
 
   const handleDeleteItem = useCallback((groupId: number, offset: number, itemId: number) => {
     const key = `${groupId}:${offset}`;

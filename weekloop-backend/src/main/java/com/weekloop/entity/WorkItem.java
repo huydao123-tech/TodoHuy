@@ -28,7 +28,7 @@ public class WorkItem {
     @Column(nullable = false)
     private WorkItemStatus status = WorkItemStatus.TODO;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String note;
 
     @Column(name = "created_at", nullable = false, updatable = false)

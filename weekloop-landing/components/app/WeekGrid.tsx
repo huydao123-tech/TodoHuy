@@ -7,8 +7,9 @@ import {
   getWorkItems,
   getWeekRange,
 } from "@/lib/mockData";
-import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple } from "@phosphor-icons/react";
+import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple, FileText } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import TaskDetailModal from "@/components/app/TaskDetailModal";
 
 // ─── CẤU HÌNH TRẠNG THÁI ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
@@ -42,6 +43,7 @@ function GoalCard({
   name,
   absoluteOffset,
   isPast,
+  weekLabel = "",
   goal,
   workItems,
   onRemoveFromWeek,
@@ -50,20 +52,23 @@ function GoalCard({
   onUpdateItem,
   onDeleteItem,
   onCycleStatus,
+  onOpenTaskDetail,
 }: {
   groupId: number;
   color: string;
   name: string;
   absoluteOffset: number;
   isPast: boolean;
+  weekLabel?: string;
   goal?: string;
   workItems?: WorkItemData[];
   onRemoveFromWeek?: (groupId: number, absoluteOffset: number, name: string) => void;
   onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
   onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
-  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, content: string) => void;
+  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
   onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
+  onOpenTaskDetail?: (item: WorkItemData, groupId: number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
   const fallbackGoal = getGoalText(groupId, absoluteOffset);
   const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
@@ -375,26 +380,55 @@ function GoalCard({
                       alignItems: "center",
                       justifyContent: "space-between",
                       flex: 1,
+                      cursor: "pointer",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "2px 4px",
+                      margin: "-2px -4px",
+                      transition: "background 0.12s ease",
+                    }}
+                    onClick={() => {
+                      if (onOpenTaskDetail) {
+                        onOpenTaskDetail(item, groupId, name, color, absoluteOffset, weekLabel);
+                      }
                     }}
                     onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
                       const actions = e.currentTarget.querySelector('.item-actions') as HTMLElement;
                       if (actions) actions.style.opacity = "1";
                     }}
                     onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "transparent";
                       const actions = e.currentTarget.querySelector('.item-actions') as HTMLElement;
                       if (actions) actions.style.opacity = "0";
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        color: cfg.textColor,
-                        textDecoration: cfg.strikethrough ? "line-through" : "none",
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {item.content}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flex: 1, minWidth: 0, paddingRight: "0.4rem" }}>
+                      <span
+                        style={{
+                          fontSize: "0.8rem",
+                          color: cfg.textColor,
+                          textDecoration: cfg.strikethrough ? "line-through" : "none",
+                          lineHeight: 1.45,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {item.content}
+                      </span>
+                      {item.note && item.note.trim().length > 0 && (
+                        <span
+                          title="Có ghi chú chi tiết"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            color: "var(--accent)",
+                            flexShrink: 0,
+                            opacity: 0.9,
+                          }}
+                        >
+                          <FileText size={12} weight="fill" />
+                        </span>
+                      )}
+                    </div>
 
                     {!isPast && (
                       <div
@@ -402,7 +436,29 @@ function GoalCard({
                         style={{ display: "flex", gap: "0.3rem", opacity: 0, transition: "opacity 0.15s ease" }}
                       >
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onOpenTaskDetail) {
+                              onOpenTaskDetail(item, groupId, name, color, absoluteOffset, weekLabel);
+                            }
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "var(--text-faint)",
+                            padding: "0.1rem",
+                            display: "flex",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
+                          title="Xem chi tiết & ghi chú"
+                        >
+                          <FileText size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingItemId(item.id);
                             setEditItemVal(item.content);
                           }}
@@ -412,16 +468,17 @@ function GoalCard({
                             cursor: "pointer",
                             color: "var(--text-faint)",
                             padding: "0.1rem",
-                            display: "flex"
+                            display: "flex",
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text)")}
                           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
-                          title="Sửa"
+                          title="Sửa tiêu đề nhanh"
                         >
                           <PencilSimple size={12} />
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setLocalItems(prev => prev.filter(x => x.id !== item.id));
                             if (onDeleteItem) onDeleteItem(groupId, absoluteOffset, item.id);
                           }}
@@ -431,7 +488,7 @@ function GoalCard({
                             cursor: "pointer",
                             color: "var(--text-faint)",
                             padding: "0.1rem",
-                            display: "flex"
+                            display: "flex",
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
                           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
@@ -553,6 +610,7 @@ function WeekColumn({
   onUpdateItem,
   onDeleteItem,
   onCycleStatus,
+  onOpenTaskDetail,
 }: {
   absoluteOffset: number;
   colOffset: -1 | 0 | 1;
@@ -566,9 +624,10 @@ function WeekColumn({
   onOpenCreateGroupModal?: () => void;
   onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
   onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
-  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, content: string) => void;
+  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
   onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
+  onOpenTaskDetail?: (item: WorkItemData, groupId: number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
   const reduce = useReducedMotion();
   const isRealCurrentWeek = absoluteOffset === 0;
@@ -674,12 +733,14 @@ function WeekColumn({
                   isPast={isPast}
                   goal={goalsMap[key]}
                   workItems={workItemsMap[key]}
+                  weekLabel={`${colLabel} (${getWeekRange(absoluteOffset)})`}
                   onRemoveFromWeek={onRemoveFromWeek}
                   onSaveGoal={onSaveGoal}
                   onAddItem={onAddItem}
                   onUpdateItem={onUpdateItem}
                   onDeleteItem={onDeleteItem}
                   onCycleStatus={onCycleStatus}
+                  onOpenTaskDetail={onOpenTaskDetail}
                 />
               </motion.div>
             );
@@ -879,7 +940,12 @@ export interface WeekGridProps {
   onOpenCreateGroupModal?: () => void;
   onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
   onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
-  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, content: string) => void;
+  onUpdateItem?: (
+    groupId: number,
+    absoluteOffset: number,
+    itemId: number,
+    updates: { content?: string; note?: string; status?: WorkItemStatus } | string
+  ) => void;
   onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
   onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
 }
@@ -900,6 +966,66 @@ export default function WeekGrid({
   onCycleStatus,
 }: WeekGridProps) {
   const [mobileActiveCol, setMobileActiveCol] = useState<-1 | 0 | 1>(0);
+
+  const [detailTask, setDetailTask] = useState<{
+    item: WorkItemData;
+    groupId: number;
+    groupName: string;
+    groupColor: string;
+    absoluteOffset: number;
+    weekLabel: string;
+  } | null>(null);
+
+  const handleOpenTaskDetail = useCallback(
+    (
+      item: WorkItemData,
+      groupId: number,
+      groupName: string,
+      groupColor: string,
+      absoluteOffset: number,
+      weekLabel: string
+    ) => {
+      setDetailTask({
+        item,
+        groupId,
+        groupName,
+        groupColor,
+        absoluteOffset,
+        weekLabel,
+      });
+    },
+    []
+  );
+
+  const handleSaveTaskDetail = useCallback(
+    (
+      taskId: number,
+      updates: { content: string; note: string; status: WorkItemStatus }
+    ) => {
+      if (!detailTask) return;
+      if (onUpdateItem) {
+        onUpdateItem(
+          detailTask.groupId,
+          detailTask.absoluteOffset,
+          taskId,
+          updates
+        );
+      }
+      setDetailTask(null);
+    },
+    [detailTask, onUpdateItem]
+  );
+
+  const handleDeleteTaskDetail = useCallback(
+    (taskId: number) => {
+      if (!detailTask) return;
+      if (onDeleteItem) {
+        onDeleteItem(detailTask.groupId, detailTask.absoluteOffset, taskId);
+      }
+      setDetailTask(null);
+    },
+    [detailTask, onDeleteItem]
+  );
 
   const cols: { colOffset: -1 | 0 | 1 }[] = [
     { colOffset: -1 },
@@ -962,10 +1088,23 @@ export default function WeekGrid({
               onUpdateItem={onUpdateItem}
               onDeleteItem={onDeleteItem}
               onCycleStatus={onCycleStatus}
+              onOpenTaskDetail={handleOpenTaskDetail}
             />
           </div>
         ))}
       </div>
+
+      {/* Cửa sổ chi tiết Task (Task Detail Modal) */}
+      <TaskDetailModal
+        isOpen={Boolean(detailTask)}
+        onClose={() => setDetailTask(null)}
+        task={detailTask ? detailTask.item : null}
+        groupName={detailTask ? detailTask.groupName : ""}
+        groupColor={detailTask ? detailTask.groupColor : "var(--accent)"}
+        weekLabel={detailTask ? detailTask.weekLabel : ""}
+        onSave={handleSaveTaskDetail}
+        onDelete={handleDeleteTaskDetail}
+      />
 
       <style>{`
         .week-grid-container {
