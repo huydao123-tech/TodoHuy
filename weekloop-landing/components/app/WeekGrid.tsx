@@ -899,6 +899,8 @@ export default function WeekGrid({
   onDeleteItem,
   onCycleStatus,
 }: WeekGridProps) {
+  const [mobileActiveCol, setMobileActiveCol] = useState<-1 | 0 | 1>(0);
+
   const cols: { colOffset: -1 | 0 | 1 }[] = [
     { colOffset: -1 },
     { colOffset: 0 },
@@ -906,33 +908,137 @@ export default function WeekGrid({
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        minHeight: "100%",
-      }}
-    >
-      {cols.map(({ colOffset }) => (
-        <WeekColumn
-          key={colOffset}
-          colOffset={colOffset}
-          absoluteOffset={viewOffset + colOffset}
-          viewOffset={viewOffset}
-          taskGroups={taskGroups}
-          goalsMap={goalsMap}
-          workItemsMap={workItemsMap}
-          excludedByWeek={excludedByWeek}
-          onRemoveFromWeek={onRemoveFromWeek}
-          onAddGroupToWeek={onAddGroupToWeek}
-          onOpenCreateGroupModal={onOpenCreateGroupModal}
-          onSaveGoal={onSaveGoal}
-          onAddItem={onAddItem}
-          onUpdateItem={onUpdateItem}
-          onDeleteItem={onDeleteItem}
-          onCycleStatus={onCycleStatus}
-        />
-      ))}
+    <div className="week-grid-container">
+      {/* Mobile Week Selector Tabs (chỉ hiện trên màn hình nhỏ < 768px) */}
+      <div className="mobile-week-tabs" role="tablist" aria-label="Chọn tuần trên điện thoại">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileActiveCol === -1}
+          className={`mobile-week-tab ${mobileActiveCol === -1 ? "active" : ""}`}
+          onClick={() => setMobileActiveCol(-1)}
+        >
+          ‹ Tuần trước
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileActiveCol === 0}
+          className={`mobile-week-tab ${mobileActiveCol === 0 ? "active" : ""}`}
+          onClick={() => setMobileActiveCol(0)}
+        >
+          ★ Tuần này {viewOffset === 0 && <span className="today-dot">●</span>}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileActiveCol === 1}
+          className={`mobile-week-tab ${mobileActiveCol === 1 ? "active" : ""}`}
+          onClick={() => setMobileActiveCol(1)}
+        >
+          Tuần sau ›
+        </button>
+      </div>
+
+      <div className="week-grid-columns">
+        {cols.map(({ colOffset }) => (
+          <div
+            key={colOffset}
+            className={`week-col-wrapper ${mobileActiveCol === colOffset ? "mobile-visible" : "mobile-hidden"}`}
+          >
+            <WeekColumn
+              colOffset={colOffset}
+              absoluteOffset={viewOffset + colOffset}
+              viewOffset={viewOffset}
+              taskGroups={taskGroups}
+              goalsMap={goalsMap}
+              workItemsMap={workItemsMap}
+              excludedByWeek={excludedByWeek}
+              onRemoveFromWeek={onRemoveFromWeek}
+              onAddGroupToWeek={onAddGroupToWeek}
+              onOpenCreateGroupModal={onOpenCreateGroupModal}
+              onSaveGoal={onSaveGoal}
+              onAddItem={onAddItem}
+              onUpdateItem={onUpdateItem}
+              onDeleteItem={onDeleteItem}
+              onCycleStatus={onCycleStatus}
+            />
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        .week-grid-container {
+          display: flex;
+          flex-direction: column;
+          min-height: 100%;
+          width: 100%;
+        }
+        .mobile-week-tabs {
+          display: none;
+        }
+        .week-grid-columns {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          min-height: 100%;
+          width: 100%;
+        }
+        @media (max-width: 767px) {
+          .mobile-week-tabs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 25;
+          }
+          .mobile-week-tab {
+            flex: 1;
+            padding: 0.45rem 0.5rem;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-muted);
+            font-size: 0.78125rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            transition: all 0.15s ease;
+          }
+          .mobile-week-tab.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            font-weight: 600;
+            box-shadow: 0 1px 4px rgba(22, 163, 74, 0.25);
+          }
+          .mobile-week-tab .today-dot {
+            font-size: 0.5rem;
+            color: #fff;
+          }
+          .week-grid-columns {
+            display: block !important;
+            width: 100% !important;
+          }
+          .week-col-wrapper.mobile-hidden {
+            display: none !important;
+          }
+          .week-col-wrapper.mobile-visible {
+            display: block !important;
+            width: 100% !important;
+          }
+          .item-actions {
+            opacity: 1 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

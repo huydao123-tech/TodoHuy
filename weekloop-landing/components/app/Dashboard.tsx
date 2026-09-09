@@ -39,6 +39,8 @@ import {
   Trash,
   Notebook,
   PencilSimple,
+  List,
+  CheckSquare,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -115,6 +117,8 @@ function SideNavItem({
 // ─── DASHBOARD CHÍNH ─────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"planner" | "notes">("planner");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileSidePanelOpen, setMobileSidePanelOpen] = useState(false);
 
   const [viewOffset, setViewOffset] = useState(0);
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
@@ -498,52 +502,66 @@ export default function Dashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 1.25rem",
+          padding: "0 0.85rem",
           borderBottom: "1px solid var(--border)",
           background: "#fff",
-          gap: "1rem",
+          gap: "0.5rem",
         }}
       >
-        {/* Logo */}
-        <Link
-          href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.45rem",
-            textDecoration: "none",
-            flexShrink: 0,
-          }}
-        >
-          <span
-            aria-hidden
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          {/* Nút Hamburger chỉ hiện trên điện thoại */}
+          <button
+            type="button"
+            className="mobile-hamburger-btn"
+            onClick={() => setMobileSidebarOpen((v) => !v)}
+            aria-label="Mở menu danh mục đầu việc"
+            title="Menu đầu việc"
+          >
+            <List size={20} weight="bold" />
+          </button>
+
+          {/* Logo */}
+          <Link
+            href="/"
             style={{
-              width: 18,
-              height: 18,
-              borderRadius: 5,
-              background: "var(--accent)",
-              display: "inline-block",
-            }}
-          />
-          <span
-            style={{
-              fontWeight: 620,
-              fontSize: "0.9375rem",
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.45rem",
+              textDecoration: "none",
+              flexShrink: 0,
             }}
           >
-            WeekLoop
-          </span>
-        </Link>
+            <span
+              aria-hidden
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 5,
+                background: "var(--accent)",
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{
+                fontWeight: 620,
+                fontSize: "0.9375rem",
+                color: "var(--text)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              WeekLoop
+            </span>
+          </Link>
+        </div>
 
         {/* Center: Week Navigator (only in planner) */}
         {activeTab === "planner" ? (
           <div
+            className="nav-center-wrapper"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.375rem",
+              gap: "0.25rem",
             }}
           >
             <button
@@ -552,8 +570,8 @@ export default function Dashboard() {
               title="Tuần trước"
               aria-label="Tuần trước"
               style={{
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 borderRadius: "var(--radius)",
                 border: "1px solid var(--border)",
                 background: "none",
@@ -562,29 +580,32 @@ export default function Dashboard() {
                 alignItems: "center",
                 justifyContent: "center",
                 color: "var(--text-muted)",
+                flexShrink: 0,
               }}
             >
               <CaretLeft size={13} />
             </button>
 
             <div
+              className="nav-center-pill"
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.4rem",
-                padding: "0.2rem 0.7rem",
+                gap: "0.35rem",
+                padding: "0.2rem 0.5rem",
                 borderRadius: "var(--radius)",
                 border: "1px solid var(--border)",
                 background: "var(--bg-alt)",
-                minWidth: 180,
+                minWidth: 140,
                 justifyContent: "center",
               }}
             >
               <Calendar size={13} color="var(--text-faint)" />
               <span
+                className="nav-center-label"
                 style={{
                   fontFamily: "var(--font-geist-mono), monospace",
-                  fontSize: "0.8125rem",
+                  fontSize: "0.78125rem",
                   color: "var(--text)",
                   fontWeight: 500,
                 }}
@@ -599,8 +620,8 @@ export default function Dashboard() {
               title="Tuần sau"
               aria-label="Tuần sau"
               style={{
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 borderRadius: "var(--radius)",
                 border: "1px solid var(--border)",
                 background: "none",
@@ -609,6 +630,7 @@ export default function Dashboard() {
                 alignItems: "center",
                 justifyContent: "center",
                 color: "var(--text-muted)",
+                flexShrink: 0,
               }}
             >
               <CaretRight size={13} />
@@ -617,6 +639,7 @@ export default function Dashboard() {
             {!isAtToday && (
               <button
                 id="nav-today"
+                className="desktop-only-btn"
                 onClick={navToToday}
                 style={{
                   display: "flex",
@@ -630,6 +653,7 @@ export default function Dashboard() {
                   cursor: "pointer",
                   fontSize: "0.75rem",
                   fontWeight: 550,
+                  whiteSpace: "nowrap",
                 }}
               >
                 <ArrowCounterClockwise size={11} />
@@ -641,16 +665,34 @@ export default function Dashboard() {
           <div />
         )}
 
-        {/* User menu */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        {/* User menu & Mobile Action */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          {/* Nút bật Drawer Việc phụ trên điện thoại */}
+          {activeTab === "planner" && (
+            <button
+              type="button"
+              className="mobile-sidepanel-btn"
+              onClick={() => setMobileSidePanelOpen((v) => !v)}
+              aria-label="Mở danh sách việc phụ"
+              title="Việc phụ"
+            >
+              <CheckSquare size={17} weight="bold" />
+              {sideTasks.filter((t) => !t.isDone).length > 0 && (
+                <span className="mobile-badge">
+                  {sideTasks.filter((t) => !t.isDone).length}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             id="user-menu-btn"
             onClick={() => setShowSettingsModal(true)}
             aria-label="Tài khoản người dùng"
             title="Tài khoản cá nhân"
             style={{
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               borderRadius: 9999,
               background: "var(--bg-alt)",
               border: "1px solid var(--border)",
@@ -661,7 +703,7 @@ export default function Dashboard() {
               color: "var(--text)",
               flexShrink: 0,
               fontWeight: 600,
-              fontSize: "0.78125rem",
+              fontSize: "0.75rem",
             }}
           >
             {currentUser.fullName ? currentUser.fullName.substring(0, 2).toUpperCase() : "HN"}
@@ -686,11 +728,20 @@ export default function Dashboard() {
       </nav>
 
       {/* ─── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* Backdrop cho Mobile Sidebar Drawer */}
+        {mobileSidebarOpen && (
+          <div
+            className="mobile-backdrop"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+
         {/* ─── LEFT SIDEBAR ────────────────────────────────────────────────── */}
         <aside
           id="app-sidebar"
           aria-label="Điều hướng chính"
+          className={mobileSidebarOpen ? "mobile-drawer-open" : ""}
           style={{
             width: 220,
             flexShrink: 0,
@@ -701,19 +752,37 @@ export default function Dashboard() {
             overflowY: "auto",
           }}
         >
+          {/* Header trong drawer điện thoại */}
+          <div className="mobile-drawer-header">
+            <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>Menu & Đầu việc</span>
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 4 }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
           {/* Main Navigation tabs */}
           <div style={{ padding: "0.75rem 0.75rem 0.35rem" }}>
             <SideNavItem
               icon={<Calendar size={15} />}
               label="Kế hoạch 3 tuần"
               active={activeTab === "planner"}
-              onClick={() => setActiveTab("planner")}
+              onClick={() => {
+                setActiveTab("planner");
+                setMobileSidebarOpen(false);
+              }}
             />
             <SideNavItem
               icon={<Notebook size={15} />}
               label="Ghi chú"
               active={activeTab === "notes"}
-              onClick={() => setActiveTab("notes")}
+              onClick={() => {
+                setActiveTab("notes");
+                setMobileSidebarOpen(false);
+              }}
             />
           </div>
 
@@ -956,12 +1025,33 @@ export default function Dashboard() {
               />
             </main>
 
-            <SidePanel
-              sideTasks={sideTasks}
-              onToggle={handleToggleSideTask}
-              onAdd={handleAddSideTask}
-              onDelete={handleDeleteSideTask}
-            />
+            {/* Backdrop cho Mobile SidePanel Drawer */}
+            {mobileSidePanelOpen && (
+              <div
+                className="mobile-backdrop"
+                onClick={() => setMobileSidePanelOpen(false)}
+              />
+            )}
+
+            <div className={`sidepanel-wrapper ${mobileSidePanelOpen ? "mobile-drawer-open" : ""}`}>
+              {/* Header cho mobile drawer việc phụ */}
+              <div className="mobile-drawer-header">
+                <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>Danh sách việc phụ</span>
+                <button
+                  type="button"
+                  onClick={() => setMobileSidePanelOpen(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 4 }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <SidePanel
+                sideTasks={sideTasks}
+                onToggle={handleToggleSideTask}
+                onAdd={handleAddSideTask}
+                onDelete={handleDeleteSideTask}
+              />
+            </div>
           </>
         ) : (
           <main id="notes-view" style={{ flex: 1, overflowY: "auto", display: "flex" }}>
@@ -1465,6 +1555,255 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ─── MOBILE BOTTOM NAVIGATION BAR ─── */}
+      <nav className="mobile-bottom-bar" aria-label="Điều hướng nhanh trên điện thoại">
+        <button
+          type="button"
+          className={`mobile-bottom-tab ${activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("planner");
+            setMobileSidebarOpen(false);
+            setMobileSidePanelOpen(false);
+          }}
+        >
+          <Calendar size={19} weight={activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <span>Kế hoạch</span>
+        </button>
+
+        <button
+          type="button"
+          className={`mobile-bottom-tab ${activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("notes");
+            setMobileSidebarOpen(false);
+            setMobileSidePanelOpen(false);
+          }}
+        >
+          <Notebook size={19} weight={activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <span>Ghi chú</span>
+        </button>
+
+        {activeTab === "planner" && (
+          <button
+            type="button"
+            className={`mobile-bottom-tab ${mobileSidePanelOpen ? "active" : ""}`}
+            onClick={() => {
+              setMobileSidePanelOpen((v) => !v);
+              setMobileSidebarOpen(false);
+            }}
+          >
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <CheckSquare size={19} weight={mobileSidePanelOpen ? "fill" : "regular"} />
+              {sideTasks.filter((t) => !t.isDone).length > 0 && (
+                <span className="bottom-bar-badge">
+                  {sideTasks.filter((t) => !t.isDone).length}
+                </span>
+              )}
+            </div>
+            <span>Việc phụ</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          className={`mobile-bottom-tab ${mobileSidebarOpen ? "active" : ""}`}
+          onClick={() => {
+            setMobileSidebarOpen((v) => !v);
+            setMobileSidePanelOpen(false);
+          }}
+        >
+          <List size={19} weight={mobileSidebarOpen ? "bold" : "regular"} />
+          <span>Đầu việc</span>
+        </button>
+      </nav>
+
+      <style>{`
+        .mobile-hamburger-btn,
+        .mobile-sidepanel-btn,
+        .mobile-drawer-header,
+        .mobile-bottom-bar,
+        .mobile-backdrop {
+          display: none;
+        }
+
+        .sidepanel-wrapper {
+          display: flex;
+          height: 100%;
+        }
+
+        @media (max-width: 767px) {
+          .mobile-hamburger-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            flex-shrink: 0;
+          }
+          .mobile-sidepanel-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+          }
+          .mobile-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.5625rem;
+            font-weight: 700;
+            width: 15px;
+            height: 15px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+          }
+          .mobile-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            z-index: 100;
+          }
+          #app-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 280px !important;
+            max-width: 82vw !important;
+            z-index: 110 !important;
+            transform: translateX(-100%);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+            background: #fff !important;
+          }
+          #app-sidebar.mobile-drawer-open {
+            transform: translateX(0);
+          }
+          .mobile-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem 0.5rem;
+            border-bottom: 1px solid var(--border);
+          }
+          .sidepanel-wrapper {
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 320px !important;
+            max-width: 88vw !important;
+            z-index: 110 !important;
+            transform: translateX(100%);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+            background: #fff !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .sidepanel-wrapper.mobile-drawer-open {
+            transform: translateX(0);
+          }
+          .sidepanel-wrapper #side-panel {
+            width: 100% !important;
+            height: 100% !important;
+            border-left: none !important;
+            background: #fff !important;
+          }
+          .mobile-bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            z-index: 50;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+          }
+          .mobile-bottom-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            padding: 6px 0;
+            cursor: pointer;
+            transition: color 0.15s ease;
+          }
+          .mobile-bottom-tab.active {
+            color: var(--accent);
+            font-weight: 600;
+          }
+          .bottom-bar-badge {
+            position: absolute;
+            top: -4px;
+            right: -6px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 9999px;
+            min-width: 14px;
+            text-align: center;
+            line-height: 1.2;
+          }
+          #main-grid, #notes-view {
+            padding-bottom: 64px !important;
+          }
+          .desktop-only-btn {
+            display: none !important;
+          }
+          .nav-center-wrapper {
+            max-width: 160px;
+          }
+          .nav-center-pill {
+            min-width: unset !important;
+            padding: 0.2rem 0.35rem !important;
+          }
+          .nav-center-label {
+            font-size: 0.72rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 75px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

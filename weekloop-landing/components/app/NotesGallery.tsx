@@ -214,6 +214,7 @@ export default function NotesGallery() {
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* ─── NOTION DATABASE HEADER ────────────────────────────────────────── */}
         <div
+          className="notes-header-controls"
           style={{
             display: "flex",
             alignItems: "center",
@@ -221,6 +222,7 @@ export default function NotesGallery() {
             marginBottom: "1.25rem",
             paddingBottom: "0.75rem",
             borderBottom: "1px solid var(--border)",
+            gap: "0.5rem",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -245,9 +247,10 @@ export default function NotesGallery() {
             </span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="notes-header-actions" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {/* Search Input */}
             <div
+              className="notes-search-input"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -293,6 +296,7 @@ export default function NotesGallery() {
                 display: "flex",
                 alignItems: "center",
                 gap: "0.3rem",
+                whiteSpace: "nowrap",
               }}
             >
               <Plus size={14} weight="bold" />
@@ -302,7 +306,7 @@ export default function NotesGallery() {
         </div>
 
         {/* Category filter pills */}
-        <div style={{ display: "flex", gap: "0.3rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+        <div className="notes-category-pills">
           <button
             onClick={() => setSelectedCategory("Tất cả")}
             style={{
@@ -314,6 +318,8 @@ export default function NotesGallery() {
               background: selectedCategory === "Tất cả" ? "var(--text)" : "transparent",
               color: selectedCategory === "Tất cả" ? "#fff" : "var(--text-muted)",
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             Tất cả
@@ -333,6 +339,8 @@ export default function NotesGallery() {
                   background: active ? "var(--text)" : "transparent",
                   color: active ? "#fff" : "var(--text-muted)",
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 {cat}
@@ -342,13 +350,7 @@ export default function NotesGallery() {
         </div>
 
         {/* ─── NOTION GALLERY GRID ─────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "1rem",
-          }}
-        >
+        <div className="notes-gallery-grid">
           {filteredNotes.map((note) => {
             const tagStyle = NOTION_TAGS[note.category] || { bg: "#F1F1EF", text: "#5A5A58" };
             return (
@@ -832,6 +834,45 @@ export default function NotesGallery() {
           </div>
         </div>
       )}
+
+      {/* Responsive Styles for NotesGallery */}
+      <style>{`
+        .notes-gallery-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 1rem;
+        }
+        .notes-category-pills {
+          display: flex;
+          gap: 0.35rem;
+          margin-bottom: 1.25rem;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          padding-bottom: 4px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .notes-category-pills::-webkit-scrollbar {
+          display: none;
+        }
+        @media (max-width: 640px) {
+          .notes-header-controls {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.75rem !important;
+          }
+          .notes-header-actions {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .notes-search-input {
+            flex: 1;
+            width: unset !important;
+          }
+          .notes-gallery-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
