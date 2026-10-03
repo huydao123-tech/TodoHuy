@@ -20,6 +20,7 @@ import {
   SquaresFour,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLanguage } from "@/lib/languageContext";
 
 // Màu pastel chuẩn Notion cho từng danh mục
 const NOTION_TAGS: Record<string, { bg: string; text: string }> = {
@@ -31,6 +32,7 @@ const NOTION_TAGS: Record<string, { bg: string; text: string }> = {
 };
 
 export default function NotesGallery() {
+  const { t, isVietnamese } = useLanguage();
   const [notes, setNotes] = useState<GalleryNote[]>([]);
   const [activeNote, setActiveNote] = useState<GalleryNote | null>(null);
 
@@ -243,7 +245,7 @@ export default function NotesGallery() {
               Gallery
             </span>
             <span style={{ fontSize: "0.8125rem", color: "var(--text-faint)" }}>
-              {notes.length} ghi chú
+              {notes.length} {isVietnamese ? "ghi chú" : "notes"}
             </span>
           </div>
 
@@ -267,7 +269,7 @@ export default function NotesGallery() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm ghi chú..."
+                placeholder={t.searchNotesHint}
                 style={{
                   border: "none",
                   outline: "none",
@@ -300,7 +302,7 @@ export default function NotesGallery() {
               }}
             >
               <Plus size={14} weight="bold" />
-              <span>Ghi chú mới</span>
+              <span>{t.newNote}</span>
             </button>
           </div>
         </div>
@@ -322,7 +324,7 @@ export default function NotesGallery() {
               flexShrink: 0,
             }}
           >
-            Tất cả
+            {isVietnamese ? "Tất cả" : "All"}
           </button>
           {NOTION_CATEGORIES.map((cat) => {
             const active = selectedCategory === cat;
@@ -390,7 +392,7 @@ export default function NotesGallery() {
                   {/* Delete button on hover */}
                   <button
                     onClick={(e) => handleDeleteNote(note.id, e)}
-                    title="Xóa ghi chú"
+                    title={isVietnamese ? "Xóa ghi chú" : "Delete note"}
                     style={{
                       position: "absolute",
                       top: "0.35rem",
@@ -447,7 +449,7 @@ export default function NotesGallery() {
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {note.title || "Ghi chú chưa có tiêu đề"}
+                      {note.title || (isVietnamese ? "Ghi chú chưa có tiêu đề" : "Untitled Note")}
                     </span>
                   </h3>
 
@@ -465,7 +467,7 @@ export default function NotesGallery() {
                       flex: 1,
                     }}
                   >
-                    {note.content || "Ghi chú trống..."}
+                    {note.content || (isVietnamese ? "Ghi chú trống..." : "Empty note...")}
                   </p>
 
                   {/* Tag & Date Footer */}
@@ -499,7 +501,7 @@ export default function NotesGallery() {
                         fontFamily: "var(--font-geist-mono), monospace",
                       }}
                     >
-                      {new Date(note.updatedAt).toLocaleDateString("vi-VN")}
+                      {new Date(note.updatedAt).toLocaleDateString(isVietnamese ? "vi-VN" : "en-US")}
                     </span>
                   </div>
                 </div>
@@ -534,7 +536,9 @@ export default function NotesGallery() {
             }}
           >
             <Plus size={18} />
-            <span style={{ fontSize: "0.8125rem", fontWeight: 500 }}>Tạo thẻ mới</span>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 500 }}>
+              {isVietnamese ? "Tạo thẻ mới" : "Create new card"}
+            </span>
           </button>
         </div>
       </div>
@@ -582,9 +586,11 @@ export default function NotesGallery() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                <span>Ghi chú</span>
+                <span>{t.notes}</span>
                 <span>/</span>
-                <span style={{ color: "var(--text)", fontWeight: 500 }}>{editTitle || "Chưa có tiêu đề"}</span>
+                <span style={{ color: "var(--text)", fontWeight: 500 }}>
+                  {editTitle || (isVietnamese ? "Chưa có tiêu đề" : "Untitled")}
+                </span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -597,7 +603,13 @@ export default function NotesGallery() {
                     gap: "0.2rem",
                   }}
                 >
-                  {saveStatus === "saved" ? <><Check size={12} /> Đã lưu</> : "Đang lưu..."}
+                  {saveStatus === "saved" ? (
+                    <>
+                      <Check size={12} /> {isVietnamese ? "Đã lưu" : "Saved"}
+                    </>
+                  ) : (
+                    isVietnamese ? "Đang lưu..." : "Saving..."
+                  )}
                 </span>
 
                 <button
@@ -635,7 +647,7 @@ export default function NotesGallery() {
                   <button
                     type="button"
                     onClick={() => setShowIconPicker(!showIconPicker)}
-                    title="Đổi biểu tượng"
+                    title={isVietnamese ? "Đổi biểu tượng" : "Change icon"}
                     style={{
                       fontSize: "1.5rem",
                       width: 38,
@@ -700,7 +712,7 @@ export default function NotesGallery() {
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   onBlur={handleSaveNote}
-                  placeholder="Tiêu đề ghi chú"
+                  placeholder={isVietnamese ? "Tiêu đề ghi chú" : "Note title"}
                   style={{
                     fontSize: "1.375rem",
                     fontWeight: 620,
@@ -728,7 +740,7 @@ export default function NotesGallery() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                   <Tag size={13} />
-                  <span>Danh mục:</span>
+                  <span>{t.category}:</span>
                   <div style={{ display: "flex", gap: "0.25rem" }}>
                     {NOTION_CATEGORIES.map((cat) => {
                       const selected = editCategory === cat;
@@ -760,7 +772,7 @@ export default function NotesGallery() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginLeft: "auto", fontSize: "0.75rem", color: "var(--text-faint)" }}>
                   <Clock size={13} />
-                  <span>{new Date(activeNote.updatedAt).toLocaleDateString("vi-VN")}</span>
+                  <span>{new Date(activeNote.updatedAt).toLocaleDateString(isVietnamese ? "vi-VN" : "en-US")}</span>
                 </div>
               </div>
 
@@ -769,7 +781,7 @@ export default function NotesGallery() {
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onBlur={handleSaveNote}
-                placeholder="Bắt đầu viết nội dung ghi chú..."
+                placeholder={t.noteContentHint}
                 style={{
                   minHeight: 280,
                   width: "100%",
@@ -813,7 +825,7 @@ export default function NotesGallery() {
                 }}
               >
                 <Trash size={13} />
-                <span>Xóa ghi chú</span>
+                <span>{isVietnamese ? "Xóa ghi chú" : "Delete note"}</span>
               </button>
 
               <button
@@ -828,7 +840,7 @@ export default function NotesGallery() {
                   fontSize: "0.8125rem",
                 }}
               >
-                Đóng
+                {t.save}
               </button>
             </div>
           </div>

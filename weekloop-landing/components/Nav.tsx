@@ -2,14 +2,26 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/lib/languageContext";
+import LanguageToggle from "@/components/LanguageToggle";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { t, isVietnamese } = useLanguage();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setIsLoggedIn(!!user);
+    });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      unsub();
+    };
   }, []);
 
   return (
@@ -111,26 +123,41 @@ export default function Nav() {
 
         {/* Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Link
-            href="/login"
-            id="nav-login"
-            style={{
-              fontSize: "0.9rem",
-              fontWeight: 480,
-              color: "var(--text-muted)",
-              textDecoration: "none",
-              padding: "0.375rem 0.75rem",
-              borderRadius: "var(--radius)",
-              transition: "color 0.15s ease",
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
-          >
-            Log in
-          </Link>
-          <a href="#pricing" className="btn-primary" id="nav-cta">
-            Start free
-          </a>
+          <LanguageToggle size="sm" />
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="btn-primary"
+              id="nav-dashboard"
+              style={{ fontSize: "0.84rem", padding: "0.38rem 0.8rem", whiteSpace: "nowrap" }}
+            >
+              {isVietnamese ? "Vào Bảng điều khiển" : "Dashboard"}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                id="nav-login"
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: 480,
+                  color: "var(--text-muted)",
+                  textDecoration: "none",
+                  padding: "0.375rem 0.75rem",
+                  borderRadius: "var(--radius)",
+                  transition: "color 0.15s ease",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
+              >
+                {t.login}
+              </Link>
+              <Link href="/login" className="btn-primary" id="nav-cta" style={{ whiteSpace: "nowrap" }}>
+                {t.signUp}
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

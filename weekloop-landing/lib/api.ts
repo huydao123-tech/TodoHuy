@@ -43,6 +43,28 @@ export function removeAuthToken() {
   }
 }
 
+// Tự động lắng nghe và duy trì trạng thái đăng nhập (Session) trên client
+if (typeof window !== "undefined") {
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        setAuthToken(token);
+        if (!localStorage.getItem("weekloop_user")) {
+          localStorage.setItem(
+            "weekloop_user",
+            JSON.stringify({
+              id: user.uid,
+              fullName: user.displayName || user.email?.split("@")[0] || "User",
+              email: user.email || "",
+            })
+          );
+        }
+      } catch {}
+    }
+  });
+}
+
 // Chờ Firebase Auth phục hồi trạng thái đăng nhập từ IndexedDB/LocalStorage
 export function getCurrentUser(): Promise<FirebaseUser | null> {
   return new Promise((resolve) => {

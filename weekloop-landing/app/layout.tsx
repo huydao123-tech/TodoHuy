@@ -15,14 +15,18 @@ export const metadata: Metadata = {
   },
 };
 
+import { LanguageProvider } from "@/lib/languageContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body>{children}</body>
+    <html lang="vi" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

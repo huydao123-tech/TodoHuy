@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SideTaskData } from "@/lib/mockData";
 import { CheckSquare, Square, Plus, Trash } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { useLanguage } from "@/lib/languageContext";
 
 interface SidePanelProps {
   sideTasks: SideTaskData[];
@@ -21,6 +22,7 @@ export default function SidePanel({
   onDelete,
   onToggle,
 }: SidePanelProps) {
+  const { t, isVietnamese } = useLanguage();
   const [newTaskText, setNewTaskText] = useState("");
   const [completingIds, setCompletingIds] = useState<Set<string | number>>(new Set());
   const reduce = useReducedMotion();
@@ -57,7 +59,7 @@ export default function SidePanel({
   return (
     <aside
       id="side-panel"
-      aria-label="Đầu việc phụ"
+      aria-label={t.sideTasksTitle}
       style={{
         width: 280,
         flexShrink: 0,
@@ -96,7 +98,7 @@ export default function SidePanel({
               fontWeight: 600,
             }}
           >
-            Đầu việc phụ
+            {t.sideTasksTitle}
           </p>
           {sideTasks.length > 0 && (
             <span
@@ -110,7 +112,7 @@ export default function SidePanel({
                 fontFamily: "var(--font-geist-mono), monospace",
               }}
             >
-              {sideTasks.length} việc
+              {sideTasks.length} {t.taskCount}
             </span>
           )}
         </div>
@@ -141,7 +143,7 @@ export default function SidePanel({
                 <button
                   type="button"
                   onClick={() => handleCompleteClick(task)}
-                  title="Đánh dấu hoàn thành để xóa việc này"
+                  title={isVietnamese ? "Đánh dấu hoàn thành để xóa việc này" : "Mark as done to complete & remove"}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -188,7 +190,7 @@ export default function SidePanel({
                   <button
                     type="button"
                     onClick={() => onDelete(task)}
-                    title="Xóa việc phụ này"
+                    title={isVietnamese ? "Xóa việc phụ này" : "Delete side task"}
                     style={{
                       background: "none",
                       border: "none",
@@ -253,7 +255,7 @@ export default function SidePanel({
                 marginBottom: "0.25rem",
               }}
             >
-              Tuyệt vời! Không còn việc phụ nào.
+              {t.noSideTasksEmpty}
             </p>
             <p
               style={{
@@ -262,7 +264,7 @@ export default function SidePanel({
                 lineHeight: 1.4,
               }}
             >
-              Nhập việc cần làm vào ô bên dưới để ghi nhanh.
+              {t.noSideTasksSub}
             </p>
           </div>
         )}
@@ -296,7 +298,7 @@ export default function SidePanel({
             value={newTaskText}
             onChange={(e) => setNewTaskText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Thêm việc phụ mới... (Enter)"
+            placeholder={t.sideTaskInputHint}
             style={{
               border: "none",
               outline: "none",

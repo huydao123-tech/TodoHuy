@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Eye, EyeSlash, ArrowRight, EnvelopeSimple, CheckCircle, ArrowLeft } from "@phosphor-icons/react";
+import { useState, useEffect } from "react";
+import { Eye, EyeSlash, ArrowRight, EnvelopeSimple, ArrowLeft } from "@phosphor-icons/react";
 import { authApi, setAuthToken } from "@/lib/api";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { useLanguage } from "@/lib/languageContext";
+import LanguageToggle from "@/components/LanguageToggle";
 
 export default function LoginPage() {
+  const { t, isVietnamese } = useLanguage();
+
+  const [checkingSession, setCheckingSession] = useState(true);
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("huy@example.com");
@@ -23,21 +30,50 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMsg, setResetMsg] = useState("");
 
+  // ─── TỰ ĐỘNG LƯU SESSION & CHUYỂN HƯỚNG NẾU ĐÃ ĐĂNG NHẬP ──────────────────
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Đã có phiên đăng nhập hợp lệ -> chuyển thẳng vào Dashboard
+        window.location.replace("/dashboard");
+      } else {
+        setCheckingSession(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   function translateFirebaseError(err: any): string {
     const code = err?.code || "";
-    if (code === "auth/invalid-email") return "Địa chỉ email không hợp lệ.";
-    if (code === "auth/user-not-found") return "Không tìm thấy tài khoản với email này.";
-    if (code === "auth/wrong-password" || code === "auth/invalid-credential")
-      return "Email hoặc mật khẩu không chính xác.";
-    if (code === "auth/email-already-in-use")
-      return "Email này đã được sử dụng. Vui lòng đăng nhập.";
-    if (code === "auth/weak-password")
-      return "Mật khẩu quá ngắn, vui lòng nhập tối thiểu 6 ký tự.";
-    if (code === "auth/too-many-requests")
-      return "Quá nhiều yêu cầu thử lại. Vui lòng đợi trong giây lát.";
-    if (code === "auth/popup-closed-by-user")
-      return "Cửa sổ đăng nhập Google đã bị đóng trước khi hoàn tất.";
-    return err?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
+    if (isVietnamese) {
+      if (code === "auth/invalid-email") return "Địa chỉ email không hợp lệ.";
+      if (code === "auth/user-not-found") return "Không tìm thấy tài khoản với email này.";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential")
+        return "Email hoặc mật khẩu không chính xác.";
+      if (code === "auth/email-already-in-use")
+        return "Email này đã được sử dụng. Vui lòng đăng nhập.";
+      if (code === "auth/weak-password")
+        return "Mật khẩu quá ngắn, vui lòng nhập tối thiểu 6 ký tự.";
+      if (code === "auth/too-many-requests")
+        return "Quá nhiều yêu cầu thử lại. Vui lòng đợi trong giây lát.";
+      if (code === "auth/popup-closed-by-user")
+        return "Cửa sổ đăng nhập Google đã bị đóng trước khi hoàn tất.";
+      return err?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
+    } else {
+      if (code === "auth/invalid-email") return "Invalid email address.";
+      if (code === "auth/user-not-found") return "No account found with this email.";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential")
+        return "Incorrect email or password.";
+      if (code === "auth/email-already-in-use")
+        return "This email is already in use. Please log in.";
+      if (code === "auth/weak-password")
+        return "Password is too short (minimum 6 characters).";
+      if (code === "auth/too-many-requests")
+        return "Too many requests. Please try again later.";
+      if (code === "auth/popup-closed-by-user")
+        return "Google sign-in popup was closed.";
+      return err?.message || "An error occurred. Please try again.";
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,12 +86,12 @@ export default function LoginPage() {
 
     if (isRegister) {
       if (cleanPassword.length < 6) {
-        setErrorMsg("Mật khẩu cần tối thiểu 6 ký tự.");
+        setErrorMsg(isVietnamese ? "Mật khẩu cần tối thiểu 6 ký tự." : "Password must be at least 6 characters.");
         setLoading(false);
         return;
       }
       if (cleanPassword !== confirmPassword.trim()) {
-        setErrorMsg("Mật khẩu xác nhận không khớp.");
+        setErrorMsg(isVietnamese ? "Mật khẩu xác nhận không khớp." : "Passwords do not match.");
         setLoading(false);
         return;
       }
@@ -75,7 +111,7 @@ export default function LoginPage() {
           email: data.email,
         })
       );
-      window.location.href = "/dashboard";
+      window.location.replace("/dashboard");
       return;
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -99,7 +135,7 @@ export default function LoginPage() {
           email: data.email,
         })
       );
-      window.location.href = "/dashboard";
+      window.location.replace("/dashboard");
     } catch (error: any) {
       console.error("Google sign in error:", error);
       setErrorMsg(translateFirebaseError(error));
@@ -112,7 +148,7 @@ export default function LoginPage() {
     e.preventDefault();
     const targetEmail = (resetEmail || email).trim();
     if (!targetEmail) {
-      setResetMsg("Vui lòng nhập email.");
+      setResetMsg(isVietnamese ? "Vui lòng nhập email." : "Please enter your email.");
       return;
     }
 
@@ -123,11 +159,39 @@ export default function LoginPage() {
       setResetSent(true);
     } catch (err: any) {
       console.error("Password reset error:", err);
-      // Even if error or user-not-found, we avoid user enumeration as specified in PRODUCT.md
       setResetSent(true);
     } finally {
       setResetLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <main
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-alt)",
+          gap: "1rem",
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 9,
+            background: "var(--accent)",
+            animation: "pulse 1.4s infinite ease-in-out",
+          }}
+        />
+        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 520 }}>
+          {t.verifyingSession}
+        </p>
+      </main>
+    );
   }
 
   return (
@@ -139,8 +203,21 @@ export default function LoginPage() {
         justifyContent: "center",
         background: "var(--bg-alt)",
         padding: "1.5rem",
+        position: "relative",
       }}
     >
+      {/* Nút chuyển đổi ngôn ngữ ở góc trên */}
+      <div
+        style={{
+          position: "absolute",
+          top: "1.25rem",
+          right: "1.25rem",
+          zIndex: 10,
+        }}
+      >
+        <LanguageToggle size="sm" />
+      </div>
+
       <div
         style={{
           width: "100%",
@@ -194,17 +271,17 @@ export default function LoginPage() {
             }}
           >
             {showForgotPassword
-              ? "Đặt lại mật khẩu"
+              ? t.forgotPasswordTitle
               : isRegister
-              ? "Đăng ký tài khoản"
-              : "Đăng nhập"}
+              ? t.signUp
+              : t.login}
           </h1>
           <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
             {showForgotPassword
-              ? "Nhập email của bạn để nhận liên kết khôi phục."
+              ? t.resetPasswordInstruction
               : isRegister
-              ? "Tạo không gian lên kế hoạch tuần cá nhân."
-              : "Tiếp tục quản lý mục tiêu và công việc của bạn."}
+              ? t.registerSub
+              : t.loginSub}
           </p>
         </div>
 
@@ -247,7 +324,7 @@ export default function LoginPage() {
                     marginBottom: "0.5rem",
                   }}
                 >
-                  Kiểm tra hộp thư của bạn
+                  {t.checkYourEmail}
                 </h3>
                 <p
                   style={{
@@ -257,7 +334,7 @@ export default function LoginPage() {
                     marginBottom: "1.25rem",
                   }}
                 >
-                  Nếu tài khoản tồn tại với địa chỉ này, bạn sẽ nhận được email hướng dẫn đặt lại mật khẩu trong vài phút. Hãy kiểm tra cả thư mục Spam.
+                  {t.resetConfirmationDesc}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   <button
@@ -274,7 +351,7 @@ export default function LoginPage() {
                       padding: "0.5rem",
                     }}
                   >
-                    Gửi lại email
+                    {isVietnamese ? "Gửi lại email" : "Resend email"}
                   </button>
                   <button
                     type="button"
@@ -291,7 +368,7 @@ export default function LoginPage() {
                       padding: "0.6rem",
                     }}
                   >
-                    Quay lại Đăng nhập
+                    {t.backToLogin}
                   </button>
                 </div>
               </div>
@@ -316,7 +393,7 @@ export default function LoginPage() {
                     htmlFor="reset-email"
                     style={{ fontSize: "0.8125rem", fontWeight: 520, color: "var(--text)" }}
                   >
-                    Email tài khoản
+                    {t.email}
                   </label>
                   <input
                     id="reset-email"
@@ -351,7 +428,7 @@ export default function LoginPage() {
                     cursor: resetLoading ? "not-allowed" : "pointer",
                   }}
                 >
-                  {resetLoading ? "Đang gửi..." : "Gửi link đặt lại"}
+                  {resetLoading ? t.loading : t.sendResetLink}
                 </button>
 
                 <button
@@ -369,7 +446,7 @@ export default function LoginPage() {
                     gap: "0.35rem",
                   }}
                 >
-                  <ArrowLeft size={14} /> Quay lại Đăng nhập
+                  <ArrowLeft size={14} /> {t.backToLogin}
                 </button>
               </form>
             )}
@@ -416,14 +493,14 @@ export default function LoginPage() {
                     color: "var(--text)",
                   }}
                 >
-                  Họ và tên
+                  {t.fullName}
                 </label>
                 <input
                   id="register-name"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="VD: Huy Nguyễn"
+                  placeholder={isVietnamese ? "VD: Huy Nguyễn" : "e.g. Alex Johnson"}
                   style={{
                     padding: "0.5625rem 0.75rem",
                     borderRadius: "var(--radius)",
@@ -448,7 +525,7 @@ export default function LoginPage() {
                   color: "var(--text)",
                 }}
               >
-                Địa chỉ Email
+                {t.email}
               </label>
               <input
                 id="login-email"
@@ -495,7 +572,7 @@ export default function LoginPage() {
                     color: "var(--text)",
                   }}
                 >
-                  Mật khẩu
+                  {t.password}
                 </label>
                 {!isRegister && (
                   <button
@@ -515,7 +592,7 @@ export default function LoginPage() {
                       cursor: "pointer",
                     }}
                   >
-                    Quên mật khẩu?
+                    {t.forgotPassword}
                   </button>
                 )}
               </div>
@@ -527,7 +604,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+                  placeholder={isVietnamese ? "Nhập mật khẩu (tối thiểu 6 ký tự)" : "Enter password (min 6 chars)"}
                   style={{
                     padding: "0.5625rem 2.25rem 0.5625rem 0.75rem",
                     borderRadius: "var(--radius)",
@@ -581,7 +658,7 @@ export default function LoginPage() {
                     color: "var(--text)",
                   }}
                 >
-                  Xác nhận mật khẩu
+                  {t.confirmPassword}
                 </label>
                 <div style={{ position: "relative" }}>
                   <input
@@ -591,7 +668,7 @@ export default function LoginPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder={isVietnamese ? "Nhập lại mật khẩu" : "Re-enter password"}
                     style={{
                       padding: "0.5625rem 2.25rem 0.5625rem 0.75rem",
                       borderRadius: "var(--radius)",
@@ -647,17 +724,19 @@ export default function LoginPage() {
               }}
             >
               {loading
-                ? "Đang xử lý..."
+                ? t.loading
                 : isRegister
-                ? "Tạo tài khoản"
-                : "Đăng nhập"}
+                ? t.signUp
+                : t.login}
               {!loading && <ArrowRight size={15} />}
             </button>
 
             {/* Dấu phân cách HOẶC */}
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.25rem 0" }}>
               <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
-              <span style={{ fontSize: "0.75rem", color: "var(--text-faint)", fontWeight: 500 }}>HOẶC</span>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-faint)", fontWeight: 500 }}>
+                {t.orDivider}
+              </span>
               <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
             </div>
 
@@ -692,7 +771,7 @@ export default function LoginPage() {
                 <path fill="#FBBC05" d="M5.27 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.61H1.24C.45 8.19 0 9.99 0 12s.45 3.81 1.24 5.39l4.03-3.12z" />
                 <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.24 6.61l4.03 3.12c.95-2.85 3.6-4.98 6.73-4.98z" />
               </svg>
-              Tiếp tục với Google
+              {t.continueWithGoogle}
             </button>
           </form>
         )}
@@ -706,7 +785,7 @@ export default function LoginPage() {
               color: "var(--text-muted)",
             }}
           >
-            {isRegister ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
+            {isRegister ? `${t.alreadyHaveAccount} ` : `${t.dontHaveAccount} `}
             <button
               type="button"
               onClick={() => {
@@ -723,7 +802,7 @@ export default function LoginPage() {
                 fontSize: "0.875rem",
               }}
             >
-              {isRegister ? "Đăng nhập ngay" : "Đăng ký miễn phí"}
+              {isRegister ? t.login : t.signUp}
             </button>
           </p>
         )}

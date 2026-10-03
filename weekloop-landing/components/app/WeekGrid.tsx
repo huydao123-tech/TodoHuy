@@ -10,6 +10,7 @@ import {
 import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple, FileText } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import TaskDetailModal from "@/components/app/TaskDetailModal";
+import { useLanguage } from "@/lib/languageContext";
 
 // ─── CẤU HÌNH TRẠNG THÁI ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
@@ -70,6 +71,7 @@ function GoalCard({
   onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
+  const { t, isVietnamese } = useLanguage();
   const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
   const currentItems = workItems !== undefined ? workItems : fallbackWorkItems;
 
@@ -191,13 +193,13 @@ function GoalCard({
                 letterSpacing: "0.02em",
               }}
             >
-              Tuần cũ
+              {t.pastWeekBadge}
             </span>
           ) : (
             onRemoveFromWeek && (
               <button
                 onClick={() => onRemoveFromWeek(groupId, absoluteOffset, name)}
-                title="Bỏ khỏi tuần này"
+                title={t.removeGroupFromWeek}
                 style={{
                   background: "none",
                   border: "none",
@@ -236,7 +238,9 @@ function GoalCard({
             fontStyle: "italic",
           }}
         >
-          {isPast ? "Không có công việc nào" : "Chưa có công việc nào trong tuần này"}
+          {isPast
+            ? (isVietnamese ? "Không có công việc nào" : "No tasks")
+            : (isVietnamese ? "Chưa có công việc nào trong tuần này" : "No tasks for this week")}
         </div>
       )}
 
@@ -264,10 +268,10 @@ function GoalCard({
                     isPast || isEditing
                       ? undefined
                       : item.status === "TODO"
-                      ? "Chuyển sang: Đang làm"
+                      ? (isVietnamese ? "Chuyển sang: Đang làm" : "Set to: In Progress")
                       : item.status === "IN_PROGRESS"
-                      ? "Chuyển sang: Đã xong"
-                      : "Đặt lại: Cần làm"
+                      ? (isVietnamese ? "Chuyển sang: Đã xong" : "Set to: Done")
+                      : (isVietnamese ? "Đặt lại: Cần làm" : "Reset to: To Do")
                   }
                   style={{
                     background: "none",
@@ -359,7 +363,7 @@ function GoalCard({
                       </span>
                       {item.note && item.note.trim().length > 0 && (
                         <span
-                          title="Có ghi chú chi tiết"
+                          title={isVietnamese ? "Có ghi chú chi tiết" : "Has detailed notes"}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -395,7 +399,7 @@ function GoalCard({
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
                           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
-                          title="Xem chi tiết & ghi chú"
+                          title={isVietnamese ? "Xem chi tiết & ghi chú" : "View details & notes"}
                         >
                           <FileText size={12} />
                         </button>
@@ -415,7 +419,7 @@ function GoalCard({
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text)")}
                           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
-                          title="Sửa tiêu đề nhanh"
+                          title={isVietnamese ? "Sửa tiêu đề nhanh" : "Quick rename"}
                         >
                           <PencilSimple size={12} />
                         </button>
@@ -435,7 +439,7 @@ function GoalCard({
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
                           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
-                          title="Xóa"
+                          title={t.delete}
                         >
                           <Trash size={12} />
                         </button>
@@ -463,7 +467,7 @@ function GoalCard({
             type="text"
             value={newItemText}
             onChange={(e) => setNewItemText(e.target.value)}
-            placeholder="Nhập tên công việc..."
+            placeholder={isVietnamese ? "Nhập tên công việc..." : "Enter task name..."}
             autoFocus
             style={{
               fontSize: "0.8rem",
@@ -487,7 +491,7 @@ function GoalCard({
               whiteSpace: "nowrap",
             }}
           >
-            Thêm
+            {t.create}
           </button>
           <button
             type="button"
@@ -502,7 +506,7 @@ function GoalCard({
               cursor: "pointer",
             }}
           >
-            Hủy
+            {t.cancel}
           </button>
         </form>
       )}
@@ -528,7 +532,7 @@ function GoalCard({
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-faint)")}
           >
             <Plus size={11} />
-            <span>Thêm công việc</span>
+            <span>{t.addWorkItem}</span>
           </button>
         </div>
       )}
@@ -572,6 +576,7 @@ function WeekColumn({
   onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
+  const { t, isVietnamese } = useLanguage();
   const reduce = useReducedMotion();
   const isRealCurrentWeek = absoluteOffset === 0;
   const isCenterCol = colOffset === 0;
@@ -584,14 +589,14 @@ function WeekColumn({
 
   const colLabel =
     absoluteOffset === 0
-      ? "TUẦN NÀY"
+      ? (isVietnamese ? "TUẦN NÀY" : "THIS WEEK")
       : absoluteOffset === -1
-      ? "TUẦN TRƯỚC"
+      ? (isVietnamese ? "TUẦN TRƯỚC" : "LAST WEEK")
       : absoluteOffset === 1
-      ? "TUẦN SAU"
+      ? (isVietnamese ? "TUẦN SAU" : "NEXT WEEK")
       : absoluteOffset < -1
-      ? `TUẦN CŨ (${Math.abs(absoluteOffset)} tuần trước)`
-      : `TUẦN TỚI (+${absoluteOffset} tuần)`;
+      ? (isVietnamese ? `TUẦN CŨ (${Math.abs(absoluteOffset)} tuần trước)` : `PAST WEEK (${Math.abs(absoluteOffset)} w ago)`)
+      : (isVietnamese ? `TUẦN TỚI (+${absoluteOffset} tuần)` : `UPCOMING (+${absoluteOffset} w)`);
 
   return (
     <div
@@ -637,7 +642,7 @@ function WeekColumn({
                 fontWeight: 600,
               }}
             >
-              Hôm nay
+              {t.today}
             </span>
           )}
         </p>
@@ -704,7 +709,7 @@ function WeekColumn({
               marginBottom: "0.75rem",
             }}
           >
-            Chưa có đầu việc nào trong tuần này
+            {isVietnamese ? "Chưa có đầu việc nào trong tuần này" : "No categories in this week"}
           </div>
         )}
 
@@ -746,7 +751,7 @@ function WeekColumn({
               }}
             >
               <Plus size={13} />
-              <span>Thêm đầu việc</span>
+              <span>{t.createCategory}</span>
             </button>
 
             {/* Menu chọn các đầu việc đang bị ẩn khỏi tuần này */}
@@ -773,7 +778,7 @@ function WeekColumn({
                     fontWeight: 500,
                   }}
                 >
-                  Thêm lại vào tuần này:
+                  {isVietnamese ? "Thêm lại vào tuần này:" : "Add back to this week:"}
                 </div>
                 {excludedGroups.map((g) => (
                   <button
@@ -860,7 +865,7 @@ function WeekColumn({
                       }
                     >
                       <Plus size={12} />
-                      <span>Tạo đầu việc mới...</span>
+                      <span>{isVietnamese ? "Tạo đầu việc mới..." : "Create new category..."}</span>
                     </button>
                   </>
                 )}
@@ -910,6 +915,7 @@ export default function WeekGrid({
   onDeleteItem,
   onCycleStatus,
 }: WeekGridProps) {
+  const { t, isVietnamese } = useLanguage();
   const [mobileActiveCol, setMobileActiveCol] = useState<-1 | 0 | 1>(0);
 
   const [detailTask, setDetailTask] = useState<{
@@ -981,7 +987,7 @@ export default function WeekGrid({
   return (
     <div className="week-grid-container">
       {/* Mobile Week Selector Tabs (chỉ hiện trên màn hình nhỏ < 768px) */}
-      <div className="mobile-week-tabs" role="tablist" aria-label="Chọn tuần trên điện thoại">
+      <div className="mobile-week-tabs" role="tablist" aria-label={isVietnamese ? "Chọn tuần trên điện thoại" : "Mobile week selector"}>
         <button
           type="button"
           role="tab"
@@ -989,7 +995,7 @@ export default function WeekGrid({
           className={`mobile-week-tab ${mobileActiveCol === -1 ? "active" : ""}`}
           onClick={() => setMobileActiveCol(-1)}
         >
-          ‹ Tuần trước
+          {isVietnamese ? "‹ Tuần trước" : "‹ Last week"}
         </button>
         <button
           type="button"
@@ -998,7 +1004,7 @@ export default function WeekGrid({
           className={`mobile-week-tab ${mobileActiveCol === 0 ? "active" : ""}`}
           onClick={() => setMobileActiveCol(0)}
         >
-          ★ Tuần này {viewOffset === 0 && <span className="today-dot">●</span>}
+          {isVietnamese ? "★ Tuần này" : "★ This week"} {viewOffset === 0 && <span className="today-dot">●</span>}
         </button>
         <button
           type="button"
@@ -1007,7 +1013,7 @@ export default function WeekGrid({
           className={`mobile-week-tab ${mobileActiveCol === 1 ? "active" : ""}`}
           onClick={() => setMobileActiveCol(1)}
         >
-          Tuần sau ›
+          {isVietnamese ? "Tuần sau ›" : "Next week ›"}
         </button>
       </div>
 

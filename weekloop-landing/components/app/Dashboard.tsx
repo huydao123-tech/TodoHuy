@@ -25,7 +25,11 @@ import {
   workItemApi,
   weeklyGoalApi,
   removeAuthToken,
+  requireAuthUser,
+  authApi,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/languageContext";
+import LanguageToggle from "@/components/LanguageToggle";
 import WeekGrid from "@/components/app/WeekGrid";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
@@ -123,21 +127,36 @@ export interface ArchivedTaskGroup extends TaskGroup {
   archivedAt?: string | null;
 }
 
-function formatArchivedTime(isoString?: string | null): string {
-  if (!isoString) return "Đã xóa gần đây";
+function formatArchivedTime(isoString?: string | null, isVi = true): string {
+  if (!isoString) return isVi ? "Đã xóa gần đây" : "Deleted recently";
   const date = new Date(isoString);
-  if (isNaN(date.getTime())) return "Đã xóa gần đây";
+  if (isNaN(date.getTime())) return isVi ? "Đã xóa gần đây" : "Deleted recently";
   const diffMs = Date.now() - date.getTime();
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (diffDays <= 0) return "Đã xóa hôm nay";
-  if (diffDays === 1) return "Đã xóa hôm qua";
-  return `Đã xóa ${diffDays} ngày trước`;
+  if (isVi) {
+    if (diffDays <= 0) return "Đã xóa hôm nay";
+    if (diffDays === 1) return "Đã xóa hôm qua";
+    return `Đã xóa ${diffDays} ngày trước`;
+  } else {
+    if (diffDays <= 0) return "Deleted today";
+    if (diffDays === 1) return "Deleted yesterday";
+    return `Deleted ${diffDays} days ago`;
+  }
 }
 
 export default function Dashboard() {
+  const { t, lang, setLang, isVietnamese } = useLanguage();
+  const [authChecking, setAuthChecking] = useState(true);
+
   const [activeTab, setActiveTab] = useState<"planner" | "notes">("planner");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileSidePanelOpen, setMobileSidePanelOpen] = useState(false);
+
+  useEffect(() => {
+    requireAuthUser()
+      .then(() => setAuthChecking(false))
+      .catch(() => {});
+  }, []);
 
   const [viewOffset, setViewOffset] = useState(0);
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
@@ -298,8 +317,8 @@ export default function Dashboard() {
       ]);
 
       setToast({
-        text: `Đã chuyển "${target.name}" vào thùng rác`,
-        actionText: "Hoàn tác",
+        text: isVietnamese ? `Đã chuyển "${target.name}" vào thùng rác` : `Moved "${target.name}" to trash`,
+        actionText: t.undo,
         onAction: () => handleRestoreGroup(id),
       });
 
@@ -307,7 +326,7 @@ export default function Dashboard() {
     });
 
     taskGroupApi.delete(id).catch(() => {});
-  }, []);
+  }, [isVietnamese, t.undo]);
 
   const handleRestoreGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => {
@@ -317,14 +336,14 @@ export default function Dashboard() {
       setTaskGroups((active) => [...active, target]);
 
       setToast({
-        text: `Đã khôi phục "${target.name}"`,
+        text: isVietnamese ? `Đã khôi phục "${target.name}"` : `Restored "${target.name}"`,
       });
 
       return prev.filter((g) => g.id !== id);
     });
 
     taskGroupApi.restore(id).catch(() => {});
-  }, []);
+  }, [isVietnamese]);
 
   const handlePermanentDeleteGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => prev.filter((g) => g.id !== id));
@@ -346,8 +365,8 @@ export default function Dashboard() {
       });
 
       setToast({
-        text: `Đã bỏ "${name}" khỏi tuần này`,
-        actionText: "Hoàn tác",
+        text: isVietnamese ? `Đã bỏ "${name}" khỏi tuần này` : `Removed "${name}" from this week`,
+        actionText: t.undo,
         onAction: () => {
           setExcludedByWeek((prev) => ({
             ...prev,
@@ -356,7 +375,7 @@ export default function Dashboard() {
         },
       });
     },
-    []
+    [isVietnamese, t.undo]
   );
 
   const handleAddGroupToWeek = useCallback((groupId: string | number, absoluteOffset: number) => {
@@ -555,19 +574,20 @@ export default function Dashboard() {
 
     if (target) {
       setToast({
-        text: `Đã xóa tài liệu "${title}"`,
-        actionText: "Hoàn tác",
+        text: isVietnamese ? `Đã xóa tài liệu "${title}"` : `Deleted resource "${title}"`,
+        actionText: t.undo,
         onAction: () => {
           setResources((prev) => [target, ...prev]);
           resourceApi.create(target.title, target.link, target.description, target.groupId).catch(() => {});
         },
       });
     }
-  }, [resources]);
+  }, [resources, isVietnamese, t.undo]);
 
-  const handleLogout = () => {
-    removeAuthToken();
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    if (window.confirm(t.logoutConfirm)) {
+      await authApi.logout();
+    }
   };
 
   const navToPrev = () => setViewOffset((v) => v - 1);
@@ -576,6 +596,35 @@ export default function Dashboard() {
 
   const centerLabel = getNavLabel(viewOffset);
   const isAtToday = viewOffset === 0;
+
+  if (authChecking) {
+    return (
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg)",
+          gap: "1rem",
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 9,
+            background: "var(--accent)",
+            animation: "pulse 1.4s infinite ease-in-out",
+          }}
+        />
+        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 520 }}>
+          {t.verifyingSession}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -663,8 +712,8 @@ export default function Dashboard() {
             <button
               id="nav-prev-week"
               onClick={navToPrev}
-              title="Tuần trước"
-              aria-label="Tuần trước"
+              title={t.prevWeek}
+              aria-label={t.prevWeek}
               style={{
                 width: 28,
                 height: 28,
@@ -713,8 +762,8 @@ export default function Dashboard() {
             <button
               id="nav-next-week"
               onClick={navToNext}
-              title="Tuần sau"
-              aria-label="Tuần sau"
+              title={t.nextWeek}
+              aria-label={t.nextWeek}
               style={{
                 width: 28,
                 height: 28,
@@ -753,7 +802,7 @@ export default function Dashboard() {
                 }}
               >
                 <ArrowCounterClockwise size={11} />
-                Về hôm nay
+                {t.today}
               </button>
             )}
           </div>
@@ -769,8 +818,8 @@ export default function Dashboard() {
               type="button"
               className="mobile-sidepanel-btn"
               onClick={() => setMobileSidePanelOpen((v) => !v)}
-              aria-label="Mở danh sách việc phụ"
-              title="Việc phụ"
+              aria-label={t.sideTasksTitle}
+              title={t.sideTasksTitle}
             >
               <CheckSquare size={17} weight="bold" />
               {sideTasks.filter((t) => !t.isDone).length > 0 && (
@@ -781,11 +830,14 @@ export default function Dashboard() {
             </button>
           )}
 
+          {/* Nút chuyển đổi ngôn ngữ */}
+          <LanguageToggle size="sm" />
+
           <button
             id="user-menu-btn"
             onClick={() => setShowSettingsModal(true)}
-            aria-label="Tài khoản người dùng"
-            title="Tài khoản cá nhân"
+            aria-label={t.settings}
+            title={t.settings}
             style={{
               width: 30,
               height: 30,
@@ -806,7 +858,7 @@ export default function Dashboard() {
           </button>
           <button
             onClick={handleLogout}
-            title="Đăng xuất"
+            title={t.logout}
             style={{
               display: "flex",
               alignItems: "center",
@@ -850,7 +902,7 @@ export default function Dashboard() {
         >
           {/* Header trong drawer điện thoại */}
           <div className="mobile-drawer-header">
-            <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>Menu & Đầu việc</span>
+            <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>{t.categoriesSection}</span>
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
@@ -864,7 +916,7 @@ export default function Dashboard() {
           <div style={{ padding: "0.75rem 0.75rem 0.35rem" }}>
             <SideNavItem
               icon={<Calendar size={15} />}
-              label="Kế hoạch 3 tuần"
+              label={t.planner}
               active={activeTab === "planner"}
               onClick={() => {
                 setActiveTab("planner");
@@ -873,7 +925,7 @@ export default function Dashboard() {
             />
             <SideNavItem
               icon={<Notebook size={15} />}
-              label="Ghi chú"
+              label={t.notes}
               active={activeTab === "notes"}
               onClick={() => {
                 setActiveTab("notes");
@@ -903,7 +955,7 @@ export default function Dashboard() {
                 paddingLeft: "0.625rem",
               }}
             >
-              Đầu việc chính
+              {t.categoriesSection}
             </p>
 
             {taskGroups.map((g) => {
@@ -991,7 +1043,7 @@ export default function Dashboard() {
                         setEditingGroupId(g.id);
                         setEditGroupVal(g.name);
                       }}
-                      title="Sửa đầu việc"
+                      title={t.renameTooltip}
                       style={{
                         background: "none",
                         border: "none",
@@ -1016,7 +1068,7 @@ export default function Dashboard() {
                     </button>
                     <button
                       onClick={() => handleSoftDeleteGroup(g.id, g.name)}
-                      title="Chuyển vào thùng rác"
+                      title={t.archiveTooltip}
                       style={{
                         background: "none",
                         border: "none",
@@ -1065,7 +1117,7 @@ export default function Dashboard() {
               onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-faint)")}
             >
               <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>+</span>
-              Thêm đầu việc
+              {t.createCategory}
             </button>
           </div>
 
@@ -1081,21 +1133,21 @@ export default function Dashboard() {
           <div style={{ padding: "0.6rem 0.75rem" }}>
             <SideNavItem
               icon={<Trash size={15} />}
-              label="Thùng rác"
+              label={t.trash}
               badge={archivedGroups.length > 0 ? archivedGroups.length : null}
               onClick={() => setShowTrashModal(true)}
             />
 
             <SideNavItem
               icon={<BookOpen size={15} />}
-              label="Tài liệu & Link"
+              label={t.resourcesAndLinks}
               badge={resources.length > 0 ? resources.length : null}
               onClick={() => setShowResourceModal(true)}
             />
 
             <SideNavItem
               icon={<Gear size={15} />}
-              label="Cài đặt hệ thống"
+              label={t.settings}
               onClick={() => setShowSettingsModal(true)}
             />
           </div>
@@ -1141,7 +1193,7 @@ export default function Dashboard() {
                       marginBottom: "0.45rem",
                     }}
                   >
-                    Bắt đầu kế hoạch tuần của bạn
+                    {isVietnamese ? "Bắt đầu kế hoạch tuần của bạn" : "Start your weekly plan"}
                   </h3>
                   <p
                     style={{
@@ -1152,7 +1204,9 @@ export default function Dashboard() {
                       marginBottom: "1.25rem",
                     }}
                   >
-                    Tạo đầu việc chính đầu tiên (ví dụ: Học ngoại ngữ, Tập luyện, Dự án cá nhân) để bắt đầu phân bổ công việc theo từng tuần.
+                    {isVietnamese
+                      ? "Tạo đầu việc chính đầu tiên (ví dụ: Học ngoại ngữ, Tập luyện, Dự án cá nhân) để bắt đầu phân bổ công việc theo từng tuần."
+                      : "Create your first category (e.g. Language Learning, Workout, Personal Project) to start planning tasks across weeks."}
                   </p>
                   <button
                     onClick={() => setShowAddGroupModal(true)}
@@ -1166,7 +1220,7 @@ export default function Dashboard() {
                     }}
                   >
                     <Plus size={15} weight="bold" />
-                    Tạo đầu việc đầu tiên
+                    {isVietnamese ? "Tạo đầu việc đầu tiên" : "Create first category"}
                   </button>
                 </div>
               ) : (
@@ -1199,7 +1253,7 @@ export default function Dashboard() {
             <div className={`sidepanel-wrapper ${mobileSidePanelOpen ? "mobile-drawer-open" : ""}`}>
               {/* Header cho mobile drawer việc phụ */}
               <div className="mobile-drawer-header">
-                <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>Danh sách việc phụ</span>
+                <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>{t.sideTasksTitle}</span>
                 <button
                   type="button"
                   onClick={() => setMobileSidePanelOpen(false)}
@@ -1318,7 +1372,7 @@ export default function Dashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
               <h3 style={{ fontSize: "1rem", fontWeight: 620, color: "var(--text)", margin: 0 }}>
-                Thùng rác ({archivedGroups.length})
+                {t.trashSheetTitle} ({archivedGroups.length})
               </h3>
               <button
                 onClick={() => {
@@ -1344,7 +1398,7 @@ export default function Dashboard() {
                 lineHeight: 1.4,
               }}
             >
-              Các nhóm trong thùng rác có thể khôi phục lại bất kỳ lúc nào hoặc xóa vĩnh viễn.
+              {t.trashRetentionNotice}
             </div>
 
             <div style={{ overflowY: "auto", flex: 1, marginBottom: "1rem" }}>
@@ -1372,7 +1426,7 @@ export default function Dashboard() {
                         </div>
                         {g.archivedAt && (
                           <span style={{ fontSize: "0.6875rem", color: "var(--text-faint)", marginLeft: "1.1rem" }}>
-                            {formatArchivedTime(g.archivedAt)}
+                            {formatArchivedTime(g.archivedAt, isVietnamese)}
                           </span>
                         )}
                       </div>
@@ -1380,7 +1434,9 @@ export default function Dashboard() {
                       <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                         {isConfirming ? (
                           <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                            <span style={{ fontSize: "0.72rem", color: "#DC2626", fontWeight: 500 }}>Xóa vĩnh viễn?</span>
+                            <span style={{ fontSize: "0.72rem", color: "#DC2626", fontWeight: 500 }}>
+                              {isVietnamese ? "Xóa vĩnh viễn?" : "Delete permanently?"}
+                            </span>
                             <button
                               onClick={() => {
                                 handlePermanentDeleteGroup(g.id);
@@ -1397,7 +1453,7 @@ export default function Dashboard() {
                                 fontWeight: 600,
                               }}
                             >
-                              Xác nhận
+                              {isVietnamese ? "Xác nhận" : "Confirm"}
                             </button>
                             <button
                               onClick={() => setConfirmPermDeleteId(null)}
@@ -1411,7 +1467,7 @@ export default function Dashboard() {
                                 cursor: "pointer",
                               }}
                             >
-                              Hủy
+                              {t.cancel}
                             </button>
                           </div>
                         ) : (
@@ -1429,12 +1485,12 @@ export default function Dashboard() {
                                 fontWeight: 550,
                               }}
                             >
-                              Khôi phục
+                              {t.restoreBtn}
                             </button>
 
                             <button
                               onClick={() => setConfirmPermDeleteId(g.id)}
-                              title="Xóa vĩnh viễn"
+                              title={t.permanentDeleteBtn}
                               style={{
                                 fontSize: "0.75rem",
                                 padding: "0.2rem 0.4rem",
@@ -1458,7 +1514,7 @@ export default function Dashboard() {
                 })
               ) : (
                 <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-faint)", fontSize: "0.8125rem" }}>
-                  Thùng rác trống
+                  {t.trashEmpty}
                 </div>
               )}
             </div>
@@ -1472,7 +1528,7 @@ export default function Dashboard() {
                 className="btn-ghost"
                 style={{ padding: "0.35rem 0.85rem", fontSize: "0.8125rem" }}
               >
-                Đóng
+                {t.cancel}
               </button>
             </div>
           </div>
@@ -1506,7 +1562,7 @@ export default function Dashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h3 style={{ fontSize: "0.95rem", fontWeight: 620, color: "var(--text)", margin: 0 }}>
-                Thêm đầu việc chính
+                {t.createCategoryModalTitle}
               </h3>
               <button
                 onClick={() => setShowAddGroupModal(false)}
@@ -1520,7 +1576,7 @@ export default function Dashboard() {
                 type="text"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="Tên đầu việc..."
+                placeholder={t.categoryNamePlaceholder}
                 autoFocus
                 required
                 style={{
@@ -1559,14 +1615,14 @@ export default function Dashboard() {
                   className="btn-ghost"
                   style={{ padding: "0.35rem 0.75rem", fontSize: "0.8125rem" }}
                 >
-                  Hủy
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
                   style={{ padding: "0.35rem 0.85rem", fontSize: "0.8125rem" }}
                 >
-                  Tạo đầu việc
+                  {t.create}
                 </button>
               </div>
             </form>
@@ -1604,7 +1660,7 @@ export default function Dashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h3 style={{ fontSize: "1rem", fontWeight: 620, color: "var(--text)", margin: 0 }}>
-                Tài liệu & Link ({resources.length})
+                {t.resourcesSheetTitle} ({resources.length})
               </h3>
               <button
                 onClick={() => setShowResourceModal(false)}
@@ -1662,7 +1718,7 @@ export default function Dashboard() {
                                 flexShrink: 0,
                               }}
                             >
-                              Chung
+                              {isVietnamese ? "Chung" : "General"}
                             </span>
                           )}
                           <h4
@@ -1710,7 +1766,7 @@ export default function Dashboard() {
 
                       <button
                         onClick={() => handleDeleteResource(res.id, res.title)}
-                        title="Xóa tài liệu"
+                        title={isVietnamese ? "Xóa tài liệu" : "Delete resource"}
                         style={{
                           background: "none",
                           border: "none",
@@ -1730,7 +1786,7 @@ export default function Dashboard() {
                 })
               ) : (
                 <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-faint)", fontSize: "0.8125rem" }}>
-                  Chưa có tài liệu nào. Thêm link mới ở bên dưới.
+                  {t.noResourcesYet}
                 </div>
               )}
             </div>
@@ -1742,7 +1798,7 @@ export default function Dashboard() {
                     type="text"
                     value={newResTitle}
                     onChange={(e) => setNewResTitle(e.target.value)}
-                    placeholder="Tiêu đề tài liệu... *"
+                    placeholder={`${t.resourceTitle}... *`}
                     required
                     style={{
                       flex: 1,
@@ -1767,7 +1823,7 @@ export default function Dashboard() {
                       maxWidth: 160,
                     }}
                   >
-                    <option value="">Chung (Không nhóm)</option>
+                    <option value="">{t.generalResource}</option>
                     {taskGroups.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.name}
@@ -1779,7 +1835,7 @@ export default function Dashboard() {
                   type="url"
                   value={newResLink}
                   onChange={(e) => setNewResLink(e.target.value)}
-                  placeholder="Đường dẫn (URL, ví dụ: https://...)"
+                  placeholder={t.resourceUrl}
                   style={{
                     padding: "0.4rem 0.6rem",
                     borderRadius: "var(--radius)",
@@ -1792,7 +1848,7 @@ export default function Dashboard() {
                   type="text"
                   value={newResDesc}
                   onChange={(e) => setNewResDesc(e.target.value)}
-                  placeholder="Ghi chú ngắn (tùy chọn)..."
+                  placeholder={t.resourceDescOptional}
                   style={{
                     padding: "0.4rem 0.6rem",
                     borderRadius: "var(--radius)",
@@ -1813,7 +1869,7 @@ export default function Dashboard() {
                       gap: "0.3rem",
                     }}
                   >
-                    <Plus size={13} /> Thêm tài liệu
+                    <Plus size={13} /> {t.addResource}
                   </button>
                 </div>
               </div>
@@ -1849,7 +1905,7 @@ export default function Dashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h3 style={{ fontSize: "1rem", fontWeight: 620, color: "var(--text)", margin: 0 }}>
-                Tài khoản
+                {t.settings}
               </h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
@@ -1860,15 +1916,22 @@ export default function Dashboard() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", fontSize: "0.84rem" }}>
               <div>
-                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>Chủ tài khoản</span>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>{t.fullName}</span>
                 <strong style={{ color: "var(--text)" }}>{currentUser.fullName || "Huy Nguyễn"}</strong>
               </div>
               <div>
-                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>Email</span>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>{t.email}</span>
                 <span style={{ color: "var(--text)" }}>{currentUser.email || "huy@example.com"}</span>
               </div>
-              <div>
-                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>Hệ thống</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.4rem", borderTop: "1px solid var(--border)" }}>
+                <div>
+                  <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>{t.language}</span>
+                  <span style={{ color: "var(--text)", fontWeight: 520 }}>{isVietnamese ? "Tiếng Việt" : "English"}</span>
+                </div>
+                <LanguageToggle size="sm" />
+              </div>
+              <div style={{ paddingTop: "0.4rem", borderTop: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "0.72rem" }}>{isVietnamese ? "Hệ thống" : "System"}</span>
                 <span style={{ color: "var(--text)" }}>WeekLoop v2.0</span>
               </div>
             </div>
@@ -1885,7 +1948,7 @@ export default function Dashboard() {
                   cursor: "pointer",
                 }}
               >
-                Đăng xuất
+                {t.logout}
               </button>
               <button
                 onClick={() => setShowSettingsModal(false)}
@@ -1895,7 +1958,7 @@ export default function Dashboard() {
                   fontSize: "0.8125rem",
                 }}
               >
-                Đóng
+                {t.cancel}
               </button>
             </div>
           </div>
@@ -1903,7 +1966,7 @@ export default function Dashboard() {
       )}
 
       {/* ─── MOBILE BOTTOM NAVIGATION BAR ─── */}
-      <nav className="mobile-bottom-bar" aria-label="Điều hướng nhanh trên điện thoại">
+      <nav className="mobile-bottom-bar" aria-label={isVietnamese ? "Điều hướng nhanh trên điện thoại" : "Mobile quick navigation"}>
         <button
           type="button"
           className={`mobile-bottom-tab ${activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
@@ -1914,7 +1977,7 @@ export default function Dashboard() {
           }}
         >
           <Calendar size={19} weight={activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
-          <span>Kế hoạch</span>
+          <span>{t.planner}</span>
         </button>
 
         <button
@@ -1927,7 +1990,7 @@ export default function Dashboard() {
           }}
         >
           <Notebook size={19} weight={activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
-          <span>Ghi chú</span>
+          <span>{t.notes}</span>
         </button>
 
         {activeTab === "planner" && (
@@ -1947,7 +2010,7 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <span>Việc phụ</span>
+            <span>{t.sideTasks}</span>
           </button>
         )}
 
@@ -1960,7 +2023,7 @@ export default function Dashboard() {
           }}
         >
           <List size={19} weight={mobileSidebarOpen ? "bold" : "regular"} />
-          <span>Đầu việc</span>
+          <span>{t.categoriesSection}</span>
         </button>
       </nav>
 

@@ -13,6 +13,7 @@ import {
   CalendarBlank,
   Tag,
 } from "@phosphor-icons/react";
+import { useLanguage } from "@/lib/languageContext";
 
 export interface TaskDetailModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export default function TaskDetailModal({
   onSave,
   onDelete,
 }: TaskDetailModalProps) {
+  const { t, isVietnamese } = useLanguage();
   const [content, setContent] = useState("");
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<WorkItemStatus>("TODO");
@@ -104,21 +106,21 @@ export default function TaskDetailModal({
   }[] = [
     {
       key: "TODO",
-      label: "Cần làm",
+      label: t.todoStatus,
       icon: <Circle size={15} weight="regular" />,
       color: "#6b7280",
       bg: "rgba(107, 114, 128, 0.12)",
     },
     {
       key: "IN_PROGRESS",
-      label: "Đang làm",
+      label: t.inProgressStatus,
       icon: <Hourglass size={15} weight="bold" />,
       color: "#d97706",
       bg: "rgba(217, 119, 6, 0.14)",
     },
     {
       key: "DONE",
-      label: "Đã xong",
+      label: t.doneStatus,
       icon: <CheckCircle size={15} weight="fill" />,
       color: "#16a34a",
       bg: "rgba(22, 163, 74, 0.14)",
@@ -168,7 +170,7 @@ export default function TaskDetailModal({
                   border: "1px solid #E7E5E4",
                 }}
               >
-                Tuần cũ (Chỉ xem)
+                {isVietnamese ? "Tuần cũ (Chỉ xem)" : "Past week (Read only)"}
               </span>
             )}
           </div>
@@ -177,8 +179,8 @@ export default function TaskDetailModal({
             type="button"
             className="task-modal-close-btn"
             onClick={onClose}
-            aria-label="Đóng"
-            title="Đóng (Esc)"
+            aria-label={t.cancel}
+            title={`${t.cancel} (Esc)`}
           >
             <X size={16} weight="bold" />
           </button>
@@ -188,7 +190,7 @@ export default function TaskDetailModal({
         <div className="task-modal-body">
           {/* Status Selection */}
           <div className="task-field-group">
-            <label className="task-field-label">Trạng thái công việc</label>
+            <label className="task-field-label">{t.taskStatusLabel}</label>
             <div className="task-status-selector">
               {STATUS_OPTIONS.map((opt) => {
                 const isActive = status === opt.key;
@@ -219,7 +221,7 @@ export default function TaskDetailModal({
           {/* Title Input */}
           <div className="task-field-group">
             <label htmlFor="task-title-input" className="task-field-label">
-              Tên công việc {!isPast && <span style={{ color: "var(--red)" }}>*</span>}
+              {t.taskContentLabel} {!isPast && <span style={{ color: "var(--red)" }}>*</span>}
             </label>
             <input
               id="task-title-input"
@@ -228,7 +230,7 @@ export default function TaskDetailModal({
               disabled={isPast}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Nhập tên công việc..."
+              placeholder={isVietnamese ? "Nhập tên công việc..." : "Enter task name..."}
               className="task-title-input"
               style={{
                 background: isPast ? "var(--bg-alt)" : "#fff",
@@ -242,16 +244,20 @@ export default function TaskDetailModal({
             <div className="task-label-with-hint">
               <label htmlFor="task-note-input" className="task-field-label">
                 <FileText size={14} weight="bold" style={{ marginRight: 4 }} />
-                Ghi chú & Chi tiết công việc
+                {t.taskNoteLabel}
               </label>
-              {!isPast && <span className="task-note-hint">Hỗ trợ ghi chép tự do, checklist, đường link...</span>}
+              {!isPast && (
+                <span className="task-note-hint">
+                  {isVietnamese ? "Hỗ trợ ghi chép tự do, checklist, đường link..." : "Supports freeform notes, checklists, links..."}
+                </span>
+              )}
             </div>
             <textarea
               id="task-note-input"
               disabled={isPast}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={isPast ? "Không có ghi chú thêm." : "Nhập ghi chú chi tiết cho task này... (Ví dụ: các bước cần làm, checklist con, tài liệu liên quan, lưu ý khi triển khai)"}
+              placeholder={isPast ? (isVietnamese ? "Không có ghi chú thêm." : "No notes.") : t.taskNotePlaceholder}
               className="task-note-textarea"
               rows={6}
               style={{
@@ -267,7 +273,7 @@ export default function TaskDetailModal({
           {isPast ? (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
               <span style={{ fontSize: "0.78125rem", color: "var(--text-muted)" }}>
-                Tuần cũ đã lưu trữ — không thể sửa đổi hoặc xóa.
+                {t.readOnlyNotice}
               </span>
               <button
                 type="button"
@@ -275,7 +281,7 @@ export default function TaskDetailModal({
                 onClick={onClose}
                 style={{ padding: "0.45rem 1.25rem", fontWeight: 600 }}
               >
-                Đóng
+                {t.cancel}
               </button>
             </div>
           ) : (
@@ -285,21 +291,23 @@ export default function TaskDetailModal({
                   type="button"
                   className={`task-delete-btn ${isDeleting ? "confirm-delete" : ""}`}
                   onClick={handleDelete}
-                  title={isDeleting ? "Bấm thêm lần nữa để xác nhận xóa" : "Xóa task"}
+                  title={isDeleting ? (isVietnamese ? "Bấm thêm lần nữa để xác nhận xóa" : "Click again to confirm delete") : t.delete}
                 >
                   <Trash size={15} />
-                  <span>{isDeleting ? "Xác nhận xóa?" : "Xóa"}</span>
+                  <span>{isDeleting ? (isVietnamese ? "Xác nhận xóa?" : "Confirm delete?") : t.delete}</span>
                 </button>
               </div>
 
               <div className="task-footer-right">
-                <span className="task-shortcut-hint">Ctrl + Enter để lưu</span>
+                <span className="task-shortcut-hint">
+                  {isVietnamese ? "Ctrl + Enter để lưu" : "Ctrl + Enter to save"}
+                </span>
                 <button
                   type="button"
                   className="task-cancel-btn"
                   onClick={onClose}
                 >
-                  Hủy
+                  {t.cancel}
                 </button>
                 <button
                   type="button"
@@ -308,7 +316,7 @@ export default function TaskDetailModal({
                   disabled={!content.trim()}
                 >
                   <FloppyDisk size={16} weight="bold" />
-                  <span>Lưu thay đổi</span>
+                  <span>{t.save}</span>
                 </button>
               </div>
             </>
