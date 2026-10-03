@@ -14,6 +14,8 @@ import {
   RESOURCES,
   getGoalText,
   getWorkItems,
+  getWeekDateStr,
+  dateStrToOffset,
 } from "@/lib/mockData";
 import {
   dashboardApi,
@@ -21,6 +23,7 @@ import {
   sideTaskApi,
   resourceApi,
   workItemApi,
+  weeklyGoalApi,
   removeAuthToken,
 } from "@/lib/api";
 import WeekGrid from "@/components/app/WeekGrid";
@@ -116,6 +119,21 @@ function SideNavItem({
 }
 
 // ─── DASHBOARD CHÍNH ─────────────────────────────────────────────────────────
+export interface ArchivedTaskGroup extends TaskGroup {
+  archivedAt?: string | null;
+}
+
+function formatArchivedTime(isoString?: string | null): string {
+  if (!isoString) return "Đã xóa gần đây";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "Đã xóa gần đây";
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays <= 0) return "Đã xóa hôm nay";
+  if (diffDays === 1) return "Đã xóa hôm qua";
+  return `Đã xóa ${diffDays} ngày trước`;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"planner" | "notes">("planner");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -123,7 +141,7 @@ export default function Dashboard() {
 
   const [viewOffset, setViewOffset] = useState(0);
   const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
-  const [archivedGroups, setArchivedGroups] = useState<TaskGroup[]>([]);
+  const [archivedGroups, setArchivedGroups] = useState<ArchivedTaskGroup[]>([]);
   const [sideTasks, setSideTasks] = useState<SideTaskData[]>([]);
   const [resources, setResources] = useState<ResourceData[]>([]);
 
@@ -153,14 +171,17 @@ export default function Dashboard() {
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState("#16A34A");
 
-  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | number | null>(null);
   const [editGroupVal, setEditGroupVal] = useState("");
 
   const [showTrashModal, setShowTrashModal] = useState(false);
+  const [confirmPermDeleteId, setConfirmPermDeleteId] = useState<string | number | null>(null);
+
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [newResTitle, setNewResTitle] = useState("");
   const [newResLink, setNewResLink] = useState("");
   const [newResDesc, setNewResDesc] = useState("");
+  const [newResGroupId, setNewResGroupId] = useState("");
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
@@ -194,18 +215,13 @@ export default function Dashboard() {
         const gMap: Record<string, string> = {};
         const wMap: Record<string, WorkItemData[]> = {};
 
-        const offsets: Record<string, number> = {};
-        if (data.prevWeekStart) offsets[data.prevWeekStart] = -1;
-        if (data.currentWeekStart) offsets[data.currentWeekStart] = 0;
-        if (data.nextWeekStart) offsets[data.nextWeekStart] = 1;
-
         (data.weeklyGoals ?? []).forEach((goal) => {
-          const off = offsets[goal.weekStartDate] ?? 0;
+          const off = dateStrToOffset(goal.weekStartDate);
           gMap[`${goal.taskGroupId}:${off}`] = goal.goalText;
         });
 
         (data.workItems ?? []).forEach((item) => {
-          const off = offsets[item.weekStartDate] ?? 0;
+          const off = dateStrToOffset(item.weekStartDate);
           const key = `${item.taskGroupId}:${off}`;
           if (!wMap[key]) wMap[key] = [];
           wMap[key].push({
@@ -244,6 +260,7 @@ export default function Dashboard() {
             id: g.id,
             name: g.name,
             color: colors[(idx + 3) % colors.length],
+            archivedAt: g.archivedAt,
           }))
         );
       })
@@ -270,12 +287,15 @@ export default function Dashboard() {
   }, []);
 
   // ─── SOFT DELETE & THÙNG RÁC (CHỈ ÁP DỤNG CHO NÚT BÊN SIDEBAR TRÁI) ─────────
-  const handleSoftDeleteGroup = useCallback((id: number, name?: string) => {
+  const handleSoftDeleteGroup = useCallback((id: string | number, name?: string) => {
     setTaskGroups((prev) => {
       const target = prev.find((g) => g.id === id);
       if (!target) return prev;
 
-      setArchivedGroups((arch) => [target, ...arch.filter((a) => a.id !== id)]);
+      setArchivedGroups((arch) => [
+        { ...target, archivedAt: new Date().toISOString() },
+        ...arch.filter((a) => a.id !== id),
+      ]);
 
       setToast({
         text: `Đã chuyển "${target.name}" vào thùng rác`,
@@ -289,7 +309,7 @@ export default function Dashboard() {
     taskGroupApi.delete(id).catch(() => {});
   }, []);
 
-  const handleRestoreGroup = useCallback((id: number) => {
+  const handleRestoreGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => {
       const target = prev.find((g) => g.id === id);
       if (!target) return prev;
@@ -306,16 +326,16 @@ export default function Dashboard() {
     taskGroupApi.restore(id).catch(() => {});
   }, []);
 
-  const handlePermanentDeleteGroup = useCallback((id: number) => {
+  const handlePermanentDeleteGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => prev.filter((g) => g.id !== id));
     taskGroupApi.permanentDelete(id).catch(() => {});
   }, []);
 
   // ─── BỎ ĐẦU VIỆC KHỎI MỘT TUẦN CỤ THỂ (KHÔNG VÀO THÙNG RÁC) ────────────────
-  const [excludedByWeek, setExcludedByWeek] = useState<Record<number, number[]>>({});
+  const [excludedByWeek, setExcludedByWeek] = useState<Record<number, (string | number)[]>>({});
 
   const handleRemoveGroupFromWeek = useCallback(
-    (groupId: number, absoluteOffset: number, name: string) => {
+    (groupId: string | number, absoluteOffset: number, name: string) => {
       setExcludedByWeek((prev) => {
         const currentList = prev[absoluteOffset] ?? [];
         if (currentList.includes(groupId)) return prev;
@@ -339,23 +359,27 @@ export default function Dashboard() {
     []
   );
 
-  const handleAddGroupToWeek = useCallback((groupId: number, absoluteOffset: number) => {
+  const handleAddGroupToWeek = useCallback((groupId: string | number, absoluteOffset: number) => {
     setExcludedByWeek((prev) => ({
       ...prev,
       [absoluteOffset]: (prev[absoluteOffset] ?? []).filter((id) => id !== groupId),
     }));
   }, []);
 
-  // ─── WORK ITEMS & GOALS ──────────────────────────────────────────────────
-  const handleSaveGoal = useCallback((groupId: number, offset: number, text: string) => {
+  // ─── WORK ITEMS & GOALS (ĐỒNG BỘ 100% VỚI FIREBASE) ───────────────────────
+  const handleSaveGoal = useCallback((groupId: string | number, offset: number, text: string) => {
     const key = `${groupId}:${offset}`;
     setGoalsMap((prev) => ({ ...prev, [key]: text }));
+    const weekStartDate = getWeekDateStr(offset);
+    weeklyGoalApi.update(groupId, weekStartDate, text).catch(console.error);
   }, []);
 
-  const handleAddItem = useCallback((groupId: number, offset: number, content: string) => {
+  const handleAddItem = useCallback(async (groupId: string | number, offset: number, content: string) => {
     const key = `${groupId}:${offset}`;
+    const weekStartDate = getWeekDateStr(offset);
+    const tempId = `temp-${Date.now()}`;
     const newItem: WorkItemData = {
-      id: Date.now(),
+      id: tempId,
       content,
       status: "TODO",
       note: "",
@@ -364,9 +388,19 @@ export default function Dashboard() {
       ...prev,
       [key]: [...(prev[key] ?? []), newItem],
     }));
+
+    try {
+      const created = await workItemApi.create(groupId, weekStartDate, content, "");
+      setWorkItemsMap((prev) => ({
+        ...prev,
+        [key]: (prev[key] ?? []).map((item) => (item.id === tempId ? { ...item, id: created.id } : item)),
+      }));
+    } catch (e) {
+      console.error("Lỗi thêm công việc vào Firebase:", e);
+    }
   }, []);
 
-  const handleCycleStatus = useCallback((groupId: number, offset: number, itemId: number) => {
+  const handleCycleStatus = useCallback((groupId: string | number, offset: number, itemId: string | number) => {
     const key = `${groupId}:${offset}`;
     setWorkItemsMap((prev) => ({
       ...prev,
@@ -374,7 +408,7 @@ export default function Dashboard() {
         if (item.id !== itemId) return item;
         const cycle = ["TODO", "IN_PROGRESS", "DONE"] as const;
         const nextStatus = cycle[(cycle.indexOf(item.status) + 1) % 3];
-        workItemApi.update(itemId, { status: nextStatus }).catch(() => {});
+        workItemApi.update(itemId, { status: nextStatus }).catch(console.error);
         return { ...item, status: nextStatus };
       }),
     }));
@@ -382,9 +416,9 @@ export default function Dashboard() {
 
   const handleUpdateItem = useCallback(
     (
-      groupId: number,
+      groupId: string | number,
       offset: number,
-      itemId: number,
+      itemId: string | number,
       updates: { content?: string; note?: string; status?: WorkItemStatus } | string
     ) => {
       const key = `${groupId}:${offset}`;
@@ -397,30 +431,30 @@ export default function Dashboard() {
           return { ...item, ...payload };
         }),
       }));
-      workItemApi.update(itemId, payload).catch(() => {});
+      workItemApi.update(itemId, payload).catch(console.error);
     },
     []
   );
 
-  const handleDeleteItem = useCallback((groupId: number, offset: number, itemId: number) => {
+  const handleDeleteItem = useCallback((groupId: string | number, offset: number, itemId: string | number) => {
     const key = `${groupId}:${offset}`;
     setWorkItemsMap((prev) => ({
       ...prev,
       [key]: (prev[key] ?? []).filter((item) => item.id !== itemId),
     }));
-    workItemApi.delete(itemId).catch(() => {});
+    workItemApi.delete(itemId).catch(console.error);
   }, []);
 
   // ─── SIDE TASKS ──────────────────────────────────────────────────────────
-  const handleToggleSideTask = useCallback((id: number) => {
+  const handleToggleSideTask = useCallback((id: string | number) => {
     setSideTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, isDone: !t.isDone } : t))
     );
-    sideTaskApi.toggle(id).catch(() => {});
+    sideTaskApi.toggle(id).catch(console.error);
   }, []);
 
   const handleAddSideTask = useCallback(async (name: string) => {
-    const tempId = Date.now();
+    const tempId = `temp-${Date.now()}`;
     setSideTasks((prev) => [...prev, { id: tempId, name, isDone: false }]);
     try {
       const created = await sideTaskApi.create(name);
@@ -430,15 +464,15 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  const handleDeleteSideTask = useCallback((id: number) => {
+  const handleDeleteSideTask = useCallback((id: string | number) => {
     setSideTasks((prev) => prev.filter((t) => t.id !== id));
-    sideTaskApi.delete(id).catch(() => {});
+    sideTaskApi.delete(id).catch(console.error);
   }, []);
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
-    const tempId = Date.now();
+    const tempId = `temp-${Date.now()}`;
     const newGroup: TaskGroup = {
       id: tempId,
       name: newGroupName.trim(),
@@ -449,7 +483,7 @@ export default function Dashboard() {
     setShowAddGroupModal(false);
 
     try {
-      const created = await taskGroupApi.create(newGroup.name);
+      const created = await taskGroupApi.create(newGroup.name, "MAIN", 0, newGroupColor);
       setTaskGroups((prev) =>
         prev.map((g) => (g.id === tempId ? { ...g, id: created.id } : g))
       );
@@ -459,26 +493,47 @@ export default function Dashboard() {
   const handleCreateResource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResTitle.trim()) return;
-    const tempId = Date.now();
+    const tempId = `temp-${Date.now()}`;
+    const selectedGroupId = newResGroupId || null;
     const newRes: ResourceData = {
       id: tempId,
-      groupId: null,
+      groupId: selectedGroupId,
       title: newResTitle.trim(),
       link: newResLink.trim() || "https://example.com",
       description: newResDesc.trim(),
     };
-    setResources((prev) => [...prev, newRes]);
+    setResources((prev) => [newRes, ...prev]);
     setNewResTitle("");
     setNewResLink("");
     setNewResDesc("");
+    setNewResGroupId("");
 
     try {
-      const created = await resourceApi.create(newRes.title, newRes.link, newRes.description);
+      const created = await resourceApi.create(newRes.title, newRes.link, newRes.description, selectedGroupId);
       setResources((prev) =>
         prev.map((r) => (r.id === tempId ? { ...r, id: created.id } : r))
       );
-    } catch {}
+    } catch (e) {
+      console.error("Lỗi thêm tài liệu:", e);
+    }
   };
+
+  const handleDeleteResource = useCallback((id: string | number, title: string) => {
+    const target = resources.find((r) => r.id === id);
+    setResources((prev) => prev.filter((r) => r.id !== id));
+    resourceApi.delete(id).catch(console.error);
+
+    if (target) {
+      setToast({
+        text: `Đã xóa tài liệu "${title}"`,
+        actionText: "Hoàn tác",
+        onAction: () => {
+          setResources((prev) => [target, ...prev]);
+          resourceApi.create(target.title, target.link, target.description, target.groupId).catch(() => {});
+        },
+      });
+    }
+  }, [resources]);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -1003,7 +1058,8 @@ export default function Dashboard() {
 
             <SideNavItem
               icon={<BookOpen size={15} />}
-              label="Tài liệu tham khảo"
+              label="Tài liệu & Link"
+              badge={resources.length > 0 ? resources.length : null}
               onClick={() => setShowResourceModal(true)}
             />
 
@@ -1019,21 +1075,87 @@ export default function Dashboard() {
         {activeTab === "planner" ? (
           <>
             <main id="main-grid" style={{ flex: 1, overflowY: "auto" }}>
-              <WeekGrid
-                viewOffset={viewOffset}
-                taskGroups={taskGroups}
-                goalsMap={goalsMap}
-                workItemsMap={workItemsMap}
-                excludedByWeek={excludedByWeek}
-                onRemoveFromWeek={handleRemoveGroupFromWeek}
-                onAddGroupToWeek={handleAddGroupToWeek}
-                onOpenCreateGroupModal={() => setShowAddGroupModal(true)}
-                onSaveGoal={handleSaveGoal}
-                onAddItem={handleAddItem}
-                onUpdateItem={handleUpdateItem}
-                onDeleteItem={handleDeleteItem}
-                onCycleStatus={handleCycleStatus}
-              />
+              {taskGroups.length === 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    minHeight: 380,
+                    padding: "2rem",
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      background: "var(--accent-bg)",
+                      color: "var(--accent)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <Calendar size={26} weight="duotone" />
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: 650,
+                      color: "var(--text)",
+                      marginBottom: "0.45rem",
+                    }}
+                  >
+                    Bắt đầu kế hoạch tuần của bạn
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "var(--text-muted)",
+                      maxWidth: 380,
+                      lineHeight: 1.5,
+                      marginBottom: "1.25rem",
+                    }}
+                  >
+                    Tạo đầu việc chính đầu tiên (ví dụ: Học ngoại ngữ, Tập luyện, Dự án cá nhân) để bắt đầu phân bổ công việc theo từng tuần.
+                  </p>
+                  <button
+                    onClick={() => setShowAddGroupModal(true)}
+                    className="btn-primary"
+                    style={{
+                      padding: "0.5rem 1.1rem",
+                      fontSize: "0.85rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    <Plus size={15} weight="bold" />
+                    Tạo đầu việc đầu tiên
+                  </button>
+                </div>
+              ) : (
+                <WeekGrid
+                  viewOffset={viewOffset}
+                  taskGroups={taskGroups}
+                  goalsMap={goalsMap}
+                  workItemsMap={workItemsMap}
+                  excludedByWeek={excludedByWeek}
+                  onRemoveFromWeek={handleRemoveGroupFromWeek}
+                  onAddGroupToWeek={handleAddGroupToWeek}
+                  onOpenCreateGroupModal={() => setShowAddGroupModal(true)}
+                  onSaveGoal={handleSaveGoal}
+                  onAddItem={handleAddItem}
+                  onUpdateItem={handleUpdateItem}
+                  onDeleteItem={handleDeleteItem}
+                  onCycleStatus={handleCycleStatus}
+                />
+              )}
             </main>
 
             {/* Backdrop cho Mobile SidePanel Drawer */}
@@ -1145,7 +1267,10 @@ export default function Dashboard() {
             justifyContent: "center",
             zIndex: 250,
           }}
-          onClick={() => setShowTrashModal(false)}
+          onClick={() => {
+            setShowTrashModal(false);
+            setConfirmPermDeleteId(null);
+          }}
         >
           <div
             style={{
@@ -1153,7 +1278,7 @@ export default function Dashboard() {
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
-              maxWidth: 440,
+              maxWidth: 460,
               maxHeight: "80vh",
               display: "flex",
               flexDirection: "column",
@@ -1166,71 +1291,141 @@ export default function Dashboard() {
                 Thùng rác ({archivedGroups.length})
               </h3>
               <button
-                onClick={() => setShowTrashModal(false)}
+                onClick={() => {
+                  setShowTrashModal(false);
+                  setConfirmPermDeleteId(null);
+                }}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)" }}
               >
                 <X size={15} />
               </button>
             </div>
 
-            <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0 0 1rem" }}>
-              Các đầu việc đã xóa mềm. Khôi phục sẽ hiển thị lại đầu việc và danh sách công việc trong tuần.
-            </p>
+            {/* Retention banner matching Flutter PRODUCT.md */}
+            <div
+              style={{
+                padding: "0.55rem 0.75rem",
+                borderRadius: "var(--radius)",
+                background: "var(--accent-bg)",
+                border: "1px solid rgba(22, 163, 74, 0.2)",
+                color: "var(--accent)",
+                fontSize: "0.78125rem",
+                marginBottom: "0.85rem",
+                lineHeight: 1.4,
+              }}
+            >
+              Các nhóm trong thùng rác có thể khôi phục lại bất kỳ lúc nào hoặc xóa vĩnh viễn.
+            </div>
 
             <div style={{ overflowY: "auto", flex: 1, marginBottom: "1rem" }}>
               {archivedGroups.length > 0 ? (
-                archivedGroups.map((g) => (
-                  <div
-                    key={g.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.5rem 0.65rem",
-                      borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)",
-                      marginBottom: "0.4rem",
-                      background: "var(--bg-alt)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 9999, background: g.color }} />
-                      <span style={{ fontSize: "0.8125rem", fontWeight: 550, color: "var(--text)" }}>{g.name}</span>
-                    </div>
+                archivedGroups.map((g) => {
+                  const isConfirming = confirmPermDeleteId === g.id;
+                  return (
+                    <div
+                      key={g.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0.5rem 0.65rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        marginBottom: "0.45rem",
+                        background: "var(--bg-alt)",
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 9999, background: g.color }} />
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 550, color: "var(--text)" }}>{g.name}</span>
+                        </div>
+                        {g.archivedAt && (
+                          <span style={{ fontSize: "0.6875rem", color: "var(--text-faint)", marginLeft: "1.1rem" }}>
+                            {formatArchivedTime(g.archivedAt)}
+                          </span>
+                        )}
+                      </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <button
-                        onClick={() => handleRestoreGroup(g.id)}
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "0.2rem 0.5rem",
-                          borderRadius: "var(--radius)",
-                          border: "1px solid var(--border)",
-                          background: "#fff",
-                          cursor: "pointer",
-                          color: "var(--text)",
-                        }}
-                      >
-                        Khôi phục
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        {isConfirming ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                            <span style={{ fontSize: "0.72rem", color: "#DC2626", fontWeight: 500 }}>Xóa vĩnh viễn?</span>
+                            <button
+                              onClick={() => {
+                                handlePermanentDeleteGroup(g.id);
+                                setConfirmPermDeleteId(null);
+                              }}
+                              style={{
+                                fontSize: "0.72rem",
+                                padding: "0.15rem 0.4rem",
+                                borderRadius: "var(--radius-sm)",
+                                background: "#DC2626",
+                                color: "#fff",
+                                border: "none",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                              }}
+                            >
+                              Xác nhận
+                            </button>
+                            <button
+                              onClick={() => setConfirmPermDeleteId(null)}
+                              style={{
+                                fontSize: "0.72rem",
+                                padding: "0.15rem 0.35rem",
+                                borderRadius: "var(--radius-sm)",
+                                background: "none",
+                                border: "1px solid var(--border)",
+                                color: "var(--text-muted)",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleRestoreGroup(g.id)}
+                              style={{
+                                fontSize: "0.75rem",
+                                padding: "0.2rem 0.55rem",
+                                borderRadius: "var(--radius)",
+                                border: "1px solid var(--border)",
+                                background: "#fff",
+                                cursor: "pointer",
+                                color: "var(--accent)",
+                                fontWeight: 550,
+                              }}
+                            >
+                              Khôi phục
+                            </button>
 
-                      <button
-                        onClick={() => handlePermanentDeleteGroup(g.id)}
-                        title="Xóa vĩnh viễn"
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "0.2rem 0.4rem",
-                          border: "none",
-                          background: "none",
-                          cursor: "pointer",
-                          color: "#DC2626",
-                        }}
-                      >
-                        <Trash size={12} />
-                      </button>
+                            <button
+                              onClick={() => setConfirmPermDeleteId(g.id)}
+                              title="Xóa vĩnh viễn"
+                              style={{
+                                fontSize: "0.75rem",
+                                padding: "0.2rem 0.4rem",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                                color: "var(--text-faint)",
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.color = "#DC2626")}
+                              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
+                            >
+                              <Trash size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-faint)", fontSize: "0.8125rem" }}>
                   Thùng rác trống
@@ -1240,7 +1435,10 @@ export default function Dashboard() {
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
-                onClick={() => setShowTrashModal(false)}
+                onClick={() => {
+                  setShowTrashModal(false);
+                  setConfirmPermDeleteId(null);
+                }}
                 className="btn-ghost"
                 style={{ padding: "0.35rem 0.85rem", fontSize: "0.8125rem" }}
               >
@@ -1366,8 +1564,8 @@ export default function Dashboard() {
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
-              maxWidth: 500,
-              maxHeight: "80vh",
+              maxWidth: 520,
+              maxHeight: "82vh",
               display: "flex",
               flexDirection: "column",
               boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
@@ -1376,7 +1574,7 @@ export default function Dashboard() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h3 style={{ fontSize: "1rem", fontWeight: 620, color: "var(--text)", margin: 0 }}>
-                Tài liệu tham khảo
+                Tài liệu & Link ({resources.length})
               </h3>
               <button
                 onClick={() => setShowResourceModal(false)}
@@ -1387,69 +1585,173 @@ export default function Dashboard() {
             </div>
 
             <div style={{ overflowY: "auto", flex: 1, paddingRight: "0.25rem", marginBottom: "1rem" }}>
-              {resources.map((res) => (
-                <div
-                  key={res.id}
-                  style={{
-                    padding: "0.55rem 0.7rem",
-                    borderRadius: "var(--radius)",
-                    border: "1px solid var(--border)",
-                    marginBottom: "0.45rem",
-                    background: "var(--bg-alt)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <h4 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text)", margin: 0 }}>
-                      {res.title}
-                    </h4>
-                    <a
-                      href={res.link}
-                      target="_blank"
-                      rel="noreferrer"
+              {resources.length > 0 ? (
+                resources.map((res) => {
+                  const linkedGroup = taskGroups.find((g) => String(g.id) === String(res.groupId));
+                  return (
+                    <div
+                      key={res.id}
                       style={{
+                        padding: "0.6rem 0.75rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        marginBottom: "0.5rem",
+                        background: "var(--bg-alt)",
                         display: "flex",
-                        alignItems: "center",
-                        gap: "0.25rem",
-                        fontSize: "0.75rem",
-                        color: "var(--accent)",
-                        textDecoration: "none",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: "0.5rem",
                       }}
                     >
-                      Mở link <ArrowSquareOut size={12} />
-                    </a>
-                  </div>
-                  {res.description && (
-                    <p style={{ fontSize: "0.78125rem", color: "var(--text-muted)", margin: "0.2rem 0 0" }}>
-                      {res.description}
-                    </p>
-                  )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginBottom: "0.2rem" }}>
+                          {linkedGroup ? (
+                            <span
+                              style={{
+                                fontSize: "0.65625rem",
+                                fontWeight: 600,
+                                padding: "0.1rem 0.4rem",
+                                borderRadius: "var(--radius-pill)",
+                                background: `${linkedGroup.color}15`,
+                                color: linkedGroup.color,
+                                border: `1px solid ${linkedGroup.color}35`,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {linkedGroup.name}
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: "0.65625rem",
+                                fontWeight: 500,
+                                padding: "0.1rem 0.35rem",
+                                borderRadius: "var(--radius-pill)",
+                                background: "var(--border)",
+                                color: "var(--text-muted)",
+                                flexShrink: 0,
+                              }}
+                            >
+                              Chung
+                            </span>
+                          )}
+                          <h4
+                            style={{
+                              fontSize: "0.84rem",
+                              fontWeight: 600,
+                              color: "var(--text)",
+                              margin: 0,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {res.title}
+                          </h4>
+                        </div>
+
+                        {res.description && (
+                          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.15rem 0 0.35rem" }}>
+                            {res.description}
+                          </p>
+                        )}
+
+                        <a
+                          href={res.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                            fontSize: "0.72rem",
+                            color: "var(--accent)",
+                            textDecoration: "none",
+                            maxWidth: "100%",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{res.link}</span>
+                          <ArrowSquareOut size={11} style={{ flexShrink: 0 }} />
+                        </a>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteResource(res.id, res.title)}
+                        title="Xóa tài liệu"
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "var(--text-faint)",
+                          cursor: "pointer",
+                          padding: "0.2rem",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-faint)")}
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-faint)", fontSize: "0.8125rem" }}>
+                  Chưa có tài liệu nào. Thêm link mới ở bên dưới.
                 </div>
-              ))}
+              )}
             </div>
 
             <form onSubmit={handleCreateResource} style={{ borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-                <input
-                  type="text"
-                  value={newResTitle}
-                  onChange={(e) => setNewResTitle(e.target.value)}
-                  placeholder="Tiêu đề tài liệu..."
-                  required
-                  style={{
-                    padding: "0.38rem 0.55rem",
-                    borderRadius: "var(--radius)",
-                    border: "1px solid var(--border)",
-                    fontSize: "0.8125rem",
-                    outline: "none",
-                  }}
-                />
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    type="text"
+                    value={newResTitle}
+                    onChange={(e) => setNewResTitle(e.target.value)}
+                    placeholder="Tiêu đề tài liệu... *"
+                    required
+                    style={{
+                      flex: 1,
+                      padding: "0.4rem 0.6rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      fontSize: "0.8125rem",
+                      outline: "none",
+                    }}
+                  />
+                  <select
+                    value={newResGroupId}
+                    onChange={(e) => setNewResGroupId(e.target.value)}
+                    style={{
+                      padding: "0.4rem 0.5rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      fontSize: "0.78125rem",
+                      outline: "none",
+                      background: "#fff",
+                      color: "var(--text)",
+                      maxWidth: 160,
+                    }}
+                  >
+                    <option value="">Chung (Không nhóm)</option>
+                    {taskGroups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <input
                   type="url"
                   value={newResLink}
                   onChange={(e) => setNewResLink(e.target.value)}
-                  placeholder="Đường dẫn (URL)..."
+                  placeholder="Đường dẫn (URL, ví dụ: https://...)"
                   style={{
-                    padding: "0.38rem 0.55rem",
+                    padding: "0.4rem 0.6rem",
                     borderRadius: "var(--radius)",
                     border: "1px solid var(--border)",
                     fontSize: "0.8125rem",
@@ -1460,9 +1762,9 @@ export default function Dashboard() {
                   type="text"
                   value={newResDesc}
                   onChange={(e) => setNewResDesc(e.target.value)}
-                  placeholder="Ghi chú ngắn..."
+                  placeholder="Ghi chú ngắn (tùy chọn)..."
                   style={{
-                    padding: "0.38rem 0.55rem",
+                    padding: "0.4rem 0.6rem",
                     borderRadius: "var(--radius)",
                     border: "1px solid var(--border)",
                     fontSize: "0.8125rem",
@@ -1474,8 +1776,11 @@ export default function Dashboard() {
                     type="submit"
                     className="btn-primary"
                     style={{
-                      padding: "0.35rem 0.7rem",
+                      padding: "0.38rem 0.75rem",
                       fontSize: "0.8125rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
                     }}
                   >
                     <Plus size={13} /> Thêm tài liệu

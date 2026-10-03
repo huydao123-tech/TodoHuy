@@ -9,9 +9,9 @@ type Filter = "all" | "pending" | "done";
 
 interface SidePanelProps {
   sideTasks: SideTaskData[];
-  onToggle: (id: number) => void;
+  onToggle: (id: string | number) => void;
   onAdd?: (name: string) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string | number) => void;
 }
 
 export default function SidePanel({

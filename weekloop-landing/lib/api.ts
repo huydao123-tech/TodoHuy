@@ -1,13 +1,29 @@
-export function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  if (typeof window !== "undefined") {
-    // Nếu truy cập qua IP mạng LAN (ví dụ trên điện thoại) hoặc localhost
-    return `http://${window.location.hostname}:8080`;
-  }
-  return "http://localhost:8080";
-}
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  User as FirebaseUser,
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { auth, db, googleProvider } from "./firebase";
+import { getMonday, formatWeekDateStr } from "./mockData";
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -27,78 +43,139 @@ export function removeAuthToken() {
   }
 }
 
-export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const baseUrl = getBaseUrl();
-  let response: Response;
-
-  // Render free tier cần tới 60-90s để thức giấc từ chế độ ngủ đông (cold start)
-  const isRenderOrRemote = baseUrl.includes("render.com") || baseUrl.startsWith("https://");
-  const timeoutMs = isRenderOrRemote ? 90000 : 15000;
-
-  try {
-    response = await fetch(`${baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-      signal: options.signal || (AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined),
+// Chờ Firebase Auth phục hồi trạng thái đăng nhập từ IndexedDB/LocalStorage
+export function getCurrentUser(): Promise<FirebaseUser | null> {
+  return new Promise((resolve) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user);
     });
-  } catch (err: any) {
-    if (err?.name === "TimeoutError" || err?.name === "AbortError") {
-      if (isRenderOrRemote) {
-        throw new Error("Máy chủ Render đang khởi động lại từ chế độ ngủ đông (thường mất ~1 phút). Vui lòng đợi 30 giây rồi bấm lại!");
-      }
-      throw new Error("Quá thời gian kết nối (Timeout). Vui lòng kiểm tra xem Backend đã khởi động chưa!");
-    }
-    throw new Error(`Không thể kết nối đến máy chủ (${baseUrl}). Vui lòng kiểm tra lại đường truyền mạng hoặc cấu hình API URL!`);
-  }
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    if (
-      response.status === 401 &&
-      typeof window !== "undefined" &&
-      !endpoint.startsWith("/api/auth/") &&
-      window.location.pathname !== "/login" &&
-      (endpoint === "/api/dashboard" || endpoint === "/api/auth/me")
-    ) {
-      removeAuthToken();
-      window.location.href = "/login";
-    }
-    throw new Error(errorBody.message || `API error: ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return response.json();
+  });
 }
 
-// ─── AUTH APIs ─────────────────────────────────────────────────────────────
+// Bắt buộc phải có user đăng nhập, nếu chưa thì chuyển hướng tới /login
+export async function requireAuthUser(): Promise<FirebaseUser> {
+  const user = await getCurrentUser();
+  if (!user) {
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+    throw new Error("Người dùng chưa đăng nhập. Vui lòng đăng nhập lại!");
+  }
+  return user;
+}
+
+// Helper khởi tạo 3 nhóm mặc định cho user mới (giống Flutter AuthRepository)
+async function seedDefaultTaskGroupsIfEmpty(uid: string) {
+  const tgRef = collection(db, "users", uid, "task_groups");
+  const snap = await getDocs(tgRef);
+  if (snap.empty) {
+    const defaults = [
+      { name: "Tiếng Nhật", color: "#16A34A", displayOrder: 1, type: "MAIN", isArchived: false },
+      { name: "Cờ vua (Chess)", color: "#7C3AED", displayOrder: 2, type: "MAIN", isArchived: false },
+      { name: "Thể hình (Gym)", color: "#D97706", displayOrder: 3, type: "MAIN", isArchived: false },
+    ];
+    for (const g of defaults) {
+      await addDoc(tgRef, {
+        ...g,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+}
+
+// ─── AUTH APIs (Dùng chung Firebase Auth với Flutter) ──────────────────────────
 export const authApi = {
-  login: (email: string, password: string) =>
-    apiFetch<{ token: string; id: number; fullName: string; email: string }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
+  login: async (email: string, password: string) => {
+    const userCred = await signInWithEmailAndPassword(auth, email, password);
+    const token = await userCred.user.getIdToken();
+    const uid = userCred.user.uid;
 
-  register: (fullName: string, email: string, password: string) =>
-    apiFetch<{ token: string; id: number; fullName: string; email: string }>("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ fullName, email, password }),
-    }),
+    const userDoc = await getDoc(doc(db, "users", uid));
+    let fullName = userCred.user.displayName || email.split("@")[0];
+    if (userDoc.exists()) {
+      fullName = userDoc.data().fullName || fullName;
+    } else {
+      await setDoc(doc(db, "users", uid), {
+        email,
+        fullName,
+        role: "USER",
+        createdAt: serverTimestamp(),
+      });
+      await seedDefaultTaskGroupsIfEmpty(uid);
+    }
 
-  getProfile: () =>
-    apiFetch<{ id: number; fullName: string; email: string }>("/api/auth/me"),
+    setAuthToken(token);
+    return { token, id: uid, fullName, email: userCred.user.email || email };
+  },
+
+  register: async (fullName: string, email: string, password: string) => {
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    try {
+      await updateProfile(userCred.user, { displayName: fullName });
+    } catch {}
+
+    const uid = userCred.user.uid;
+    await setDoc(doc(db, "users", uid), {
+      email,
+      fullName,
+      role: "USER",
+      createdAt: serverTimestamp(),
+    });
+
+    await seedDefaultTaskGroupsIfEmpty(uid);
+
+    const token = await userCred.user.getIdToken();
+    setAuthToken(token);
+    return { token, id: uid, fullName, email };
+  },
+
+  loginWithGoogle: async () => {
+    const userCred = await signInWithPopup(auth, googleProvider);
+    const uid = userCred.user.uid;
+    const email = userCred.user.email || "";
+    const fullName = userCred.user.displayName || email.split("@")[0] || "Người dùng";
+
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (!userDoc.exists()) {
+      await setDoc(doc(db, "users", uid), {
+        email,
+        fullName,
+        role: "USER",
+        createdAt: serverTimestamp(),
+      });
+      await seedDefaultTaskGroupsIfEmpty(uid);
+    }
+
+    const token = await userCred.user.getIdToken();
+    setAuthToken(token);
+    return { token, id: uid, fullName, email };
+  },
+
+  getProfile: async () => {
+    const user = await requireAuthUser();
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const fullName = userDoc.exists() ? userDoc.data().fullName : user.displayName || user.email?.split("@")[0] || "Người dùng";
+    return { id: user.uid, fullName, email: user.email || "" };
+  },
+
+  logout: async () => {
+    await signOut(auth);
+    removeAuthToken();
+  },
+
+  sendPasswordResetEmail: async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  },
+
+  onAuthStateChanged: (callback: (user: FirebaseUser | null) => void) => {
+    return onAuthStateChanged(auth, callback);
+  },
 };
 
 // ─── DASHBOARD APIs ────────────────────────────────────────────────────────
@@ -106,135 +183,507 @@ export interface DashboardData {
   currentWeekStart: string;
   prevWeekStart: string;
   nextWeekStart: string;
-  taskGroups: { id: number; name: string; type: "MAIN" | "SIDE"; displayOrder: number; isArchived: boolean }[];
-  weeklyGoals: { id: number; taskGroupId: number; weekStartDate: string; goalText: string }[];
-  workItems: { id: number; taskGroupId: number; weekStartDate: string; content: string; status: "TODO" | "IN_PROGRESS" | "DONE"; note: string }[];
-  sideTasks: { id: number; name: string; isDone: boolean }[];
+  taskGroups: {
+    id: string;
+    name: string;
+    type: "MAIN" | "SIDE";
+    color: string;
+    displayOrder: number;
+    isArchived: boolean;
+  }[];
+  weeklyGoals: {
+    id: string;
+    taskGroupId: string;
+    weekStartDate: string;
+    goalText: string;
+  }[];
+  workItems: {
+    id: string;
+    taskGroupId: string;
+    weekStartDate: string;
+    content: string;
+    status: "TODO" | "IN_PROGRESS" | "DONE";
+    note: string;
+  }[];
+  sideTasks: {
+    id: string;
+    name: string;
+    isDone: boolean;
+  }[];
   sideTasksDoneCount: number;
   sideTasksTotalCount: number;
 }
 
 export const dashboardApi = {
-  getDashboard: (weekStart?: string) =>
-    apiFetch<DashboardData>(`/api/dashboard${weekStart ? `?weekStart=${weekStart}` : ""}`),
+  getDashboard: async (weekStart?: string): Promise<DashboardData> => {
+    const user = await requireAuthUser();
+    const uid = user.uid;
+
+    // Đảm bảo user đã có task_groups mặc định
+    await seedDefaultTaskGroupsIfEmpty(uid);
+
+    // Tính mốc 3 tuần trượt
+    const baseDate = weekStart ? new Date(weekStart) : new Date();
+    const currentWeekMonday = getMonday(baseDate);
+    const prevWeekMonday = new Date(currentWeekMonday);
+    prevWeekMonday.setDate(prevWeekMonday.getDate() - 7);
+    const nextWeekMonday = new Date(currentWeekMonday);
+    nextWeekMonday.setDate(nextWeekMonday.getDate() + 7);
+
+    const currentWeekStart = formatWeekDateStr(currentWeekMonday);
+    const prevWeekStart = formatWeekDateStr(prevWeekMonday);
+    const nextWeekStart = formatWeekDateStr(nextWeekMonday);
+
+    // 1. Task Groups
+    const tgRef = collection(db, "users", uid, "task_groups");
+    const tgSnap = await getDocs(tgRef);
+    const taskGroups = tgSnap.docs
+      .map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: (data.name as string) || "",
+          type: ((data.type as string) || "MAIN") as "MAIN" | "SIDE",
+          color: (data.color as string) || "#16A34A",
+          displayOrder: (data.displayOrder as number) || 0,
+          isArchived: (data.isArchived as boolean) || false,
+        };
+      })
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    // 2. Weekly Goals
+    const wgRef = collection(db, "users", uid, "weekly_goals");
+    const wgSnap = await getDocs(wgRef);
+    const weeklyGoals = wgSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        taskGroupId: (data.taskGroupId as string) || "",
+        weekStartDate: (data.weekStartDate as string) || "",
+        goalText: (data.goalText as string) || "",
+      };
+    });
+
+    // 3. Work Items
+    const wiRef = collection(db, "users", uid, "work_items");
+    const wiSnap = await getDocs(wiRef);
+    const workItems = wiSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        taskGroupId: (data.taskGroupId as string) || "",
+        weekStartDate: (data.weekStartDate as string) || "",
+        content: (data.content as string) || "",
+        status: ((data.status as string) || "TODO") as "TODO" | "IN_PROGRESS" | "DONE",
+        note: (data.note as string) || "",
+      };
+    });
+
+    // 4. Side Tasks
+    const stRef = collection(db, "users", uid, "side_tasks");
+    const stSnap = await getDocs(stRef);
+    const sideTasks = stSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: (data.name as string) || "",
+        isDone: (data.isDone as boolean) || false,
+      };
+    });
+
+    const sideTasksDoneCount = sideTasks.filter((t) => t.isDone).length;
+    const sideTasksTotalCount = sideTasks.length;
+
+    return {
+      currentWeekStart,
+      prevWeekStart,
+      nextWeekStart,
+      taskGroups,
+      weeklyGoals,
+      workItems,
+      sideTasks,
+      sideTasksDoneCount,
+      sideTasksTotalCount,
+    };
+  },
 };
 
 // ─── TASK GROUP APIs ───────────────────────────────────────────────────────
+export interface TaskGroupData {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  displayOrder: number;
+  isArchived: boolean;
+  archivedAt?: string | null;
+}
+
 export const taskGroupApi = {
-  getAll: (type?: "MAIN" | "SIDE") =>
-    apiFetch<{ id: number; name: string; type: string; displayOrder: number }[]>(
-      `/api/task-groups${type ? `?type=${type}` : ""}`
-    ),
+  getAll: async (type?: "MAIN" | "SIDE"): Promise<TaskGroupData[]> => {
+    const user = await requireAuthUser();
+    const tgRef = collection(db, "users", user.uid, "task_groups");
+    const snap = await getDocs(tgRef);
+    let items: TaskGroupData[] = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || "",
+        type: data.type || "MAIN",
+        color: data.color || "#16A34A",
+        displayOrder: data.displayOrder || 0,
+        isArchived: data.isArchived || false,
+      };
+    }).filter((g) => !g.isArchived);
 
-  create: (name: string, type: "MAIN" | "SIDE" = "MAIN", displayOrder: number = 0) =>
-    apiFetch<{ id: number; name: string; type: string; displayOrder: number }>("/api/task-groups", {
-      method: "POST",
-      body: JSON.stringify({ name, type, displayOrder }),
-    }),
+    if (type) items = items.filter((g) => g.type === type);
+    return items.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
 
-  update: (id: number, name: string) =>
-    apiFetch(`/api/task-groups/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ name }),
-    }),
+  create: async (name: string, type: "MAIN" | "SIDE" = "MAIN", displayOrder: number = 0, color: string = "#16A34A") => {
+    const user = await requireAuthUser();
+    const tgRef = collection(db, "users", user.uid, "task_groups");
+    const docRef = await addDoc(tgRef, {
+      name,
+      type,
+      color,
+      displayOrder,
+      isArchived: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return { id: docRef.id, name, type, color, displayOrder, isArchived: false };
+  },
 
-  delete: (id: number) =>
-    apiFetch(`/api/task-groups/${id}`, {
-      method: "DELETE",
-    }),
+  update: async (id: string | number, name: string) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "task_groups", String(id));
+    await updateDoc(docRef, {
+      name,
+      updatedAt: serverTimestamp(),
+    });
+  },
 
-  getTrash: () =>
-    apiFetch<{ id: number; name: string; type: string; displayOrder: number; isArchived: boolean }[]>("/api/task-groups/trash"),
+  delete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "task_groups", String(id));
+    await updateDoc(docRef, {
+      isArchived: true,
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  },
 
-  restore: (id: number) =>
-    apiFetch<{ id: number; name: string; type: string; displayOrder: number; isArchived: boolean }>(`/api/task-groups/${id}/restore`, {
-      method: "PATCH",
-    }),
+  getTrash: async (): Promise<TaskGroupData[]> => {
+    const user = await requireAuthUser();
+    const tgRef = collection(db, "users", user.uid, "task_groups");
+    const snap = await getDocs(tgRef);
+    return snap.docs
+      .map((d) => {
+        const data = d.data();
+        const archAt = data.archivedAt as Timestamp | undefined;
+        return {
+          id: d.id,
+          name: data.name || "",
+          type: data.type || "MAIN",
+          color: data.color || "#16A34A",
+          displayOrder: data.displayOrder || 0,
+          isArchived: data.isArchived || false,
+          archivedAt: archAt ? archAt.toDate().toISOString() : null,
+        };
+      })
+      .filter((g) => g.isArchived);
+  },
 
-  permanentDelete: (id: number) =>
-    apiFetch<void>(`/api/task-groups/${id}/permanent`, {
-      method: "DELETE",
-    }),
+  restore: async (id: string | number): Promise<TaskGroupData> => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "task_groups", String(id));
+    await updateDoc(docRef, {
+      isArchived: false,
+      archivedAt: null,
+      updatedAt: serverTimestamp(),
+    });
+    const snap = await getDoc(docRef);
+    const data = snap.data() || {};
+    return {
+      id: String(id),
+      name: data.name || "",
+      type: data.type || "MAIN",
+      color: data.color || "#16A34A",
+      displayOrder: data.displayOrder || 0,
+      isArchived: false,
+    };
+  },
+
+  permanentDelete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "task_groups", String(id));
+    await deleteDoc(docRef);
+  },
 };
 
-export interface NoteData { id: number; title: string; content: string; color: string; updatedAt: string; }
+// ─── NOTE APIs ─────────────────────────────────────────────────────────────
+export interface NoteData {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  updatedAt: string;
+}
+
 export const noteApi = {
-  getAll: () => apiFetch<NoteData[]>("/api/notes"),
-  create: (title: string, content = "", color = "stone") =>
-    apiFetch<NoteData>("/api/notes", { method: "POST", body: JSON.stringify({ title, content, color }) }),
-  update: (id: number, data: Partial<Pick<NoteData, "title" | "content" | "color">>) =>
-    apiFetch<NoteData>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: number) => apiFetch<void>(`/api/notes/${id}`, { method: "DELETE" }),
+  getAll: async (): Promise<NoteData[]> => {
+    const user = await requireAuthUser();
+    const nRef = collection(db, "users", user.uid, "notes");
+    const snap = await getDocs(nRef);
+    return snap.docs.map((d) => {
+      const data = d.data();
+      const updated = data.updatedAt as Timestamp | undefined;
+      return {
+        id: d.id,
+        title: data.title || "",
+        content: data.content || "",
+        color: data.color || "stone:Ý tưởng:📝",
+        updatedAt: updated ? updated.toDate().toISOString() : new Date().toISOString(),
+      };
+    });
+  },
+
+  create: async (title: string, content = "", color = "stone:Ý tưởng:📝"): Promise<NoteData> => {
+    const user = await requireAuthUser();
+    const nRef = collection(db, "users", user.uid, "notes");
+    const docRef = await addDoc(nRef, {
+      title,
+      content,
+      color,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return {
+      id: docRef.id,
+      title,
+      content,
+      color,
+      updatedAt: new Date().toISOString(),
+    };
+  },
+
+  update: async (id: string | number, data: Partial<Pick<NoteData, "title" | "content" | "color">>): Promise<NoteData> => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "notes", String(id));
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+    const snap = await getDoc(docRef);
+    const d = snap.data() || {};
+    const updated = d.updatedAt as Timestamp | undefined;
+    return {
+      id: String(id),
+      title: d.title || "",
+      content: d.content || "",
+      color: d.color || "stone:Ý tưởng:📝",
+      updatedAt: updated ? updated.toDate().toISOString() : new Date().toISOString(),
+    };
+  },
+
+  delete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "notes", String(id));
+    await deleteDoc(docRef);
+  },
 };
 
 // ─── RESOURCE APIs ─────────────────────────────────────────────────────────
+export interface ResourceApiData {
+  id: string;
+  taskGroupId: string | null;
+  title: string;
+  link: string;
+  description: string;
+}
+
 export const resourceApi = {
-  getAll: (groupId?: number) =>
-    apiFetch<{ id: number; taskGroupId: number | null; title: string; link: string; description: string }[]>(
-      `/api/resources${groupId ? `?groupId=${groupId}` : ""}`
-    ),
+  getAll: async (groupId?: string | number): Promise<ResourceApiData[]> => {
+    const user = await requireAuthUser();
+    const rRef = collection(db, "users", user.uid, "resources");
+    const snap = await getDocs(rRef);
+    let items = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        taskGroupId: data.taskGroupId ? String(data.taskGroupId) : null,
+        title: data.title || "",
+        link: data.link || "",
+        description: data.description || "",
+      };
+    });
+    if (groupId) {
+      items = items.filter((r) => r.taskGroupId === String(groupId));
+    }
+    return items;
+  },
 
-  create: (title: string, link?: string, description?: string, taskGroupId?: number) =>
-    apiFetch<{ id: number; taskGroupId: number | null; title: string; link: string; description: string }>("/api/resources", {
-      method: "POST",
-      body: JSON.stringify({ title, link, description, taskGroupId }),
-    }),
+  create: async (title: string, link = "", description = "", taskGroupId?: string | number | null): Promise<ResourceApiData> => {
+    const user = await requireAuthUser();
+    const rRef = collection(db, "users", user.uid, "resources");
+    const docRef = await addDoc(rRef, {
+      title,
+      link,
+      description,
+      taskGroupId: taskGroupId ? String(taskGroupId) : null,
+      createdAt: serverTimestamp(),
+    });
+    return {
+      id: docRef.id,
+      taskGroupId: taskGroupId ? String(taskGroupId) : null,
+      title,
+      link,
+      description,
+    };
+  },
 
-  delete: (id: number) =>
-    apiFetch(`/api/resources/${id}`, {
-      method: "DELETE",
-    }),
+  delete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "resources", String(id));
+    await deleteDoc(docRef);
+  },
 };
 
-// ─── WEEKLY GOAL APIs ──────────────────────────────────────────────────────
+// ─── WEEKLY GOAL APIs (Upsert tương tự Flutter) ────────────────────────────
 export const weeklyGoalApi = {
-  update: (taskGroupId: number, weekStart: string, goalText: string) =>
-    apiFetch(`/api/task-groups/${taskGroupId}/weekly-goals/${weekStart}`, {
-      method: "PUT",
-      body: JSON.stringify({ goalText }),
-    }),
+  update: async (taskGroupId: string | number, weekStart: string, goalText: string) => {
+    const user = await requireAuthUser();
+    const wgRef = collection(db, "users", user.uid, "weekly_goals");
+    const q = query(
+      wgRef,
+      where("taskGroupId", "==", String(taskGroupId)),
+      where("weekStartDate", "==", weekStart)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      await updateDoc(doc(db, "users", user.uid, "weekly_goals", snap.docs[0].id), {
+        goalText,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await addDoc(wgRef, {
+        taskGroupId: String(taskGroupId),
+        weekStartDate: weekStart,
+        goalText,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  },
 };
 
 // ─── WORK ITEM APIs ────────────────────────────────────────────────────────
+export interface WorkItemApiData {
+  id: string;
+  taskGroupId: string;
+  weekStartDate: string;
+  content: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  note: string;
+}
+
 export const workItemApi = {
-  create: (taskGroupId: number, weekStartDate: string, content: string, note?: string) =>
-    apiFetch("/api/work-items", {
-      method: "POST",
-      body: JSON.stringify({ taskGroupId, weekStartDate, content, status: "TODO", note }),
-    }),
+  create: async (
+    taskGroupId: string | number,
+    weekStartDate: string,
+    content: string,
+    note = ""
+  ): Promise<WorkItemApiData> => {
+    const user = await requireAuthUser();
+    const wiRef = collection(db, "users", user.uid, "work_items");
+    const docRef = await addDoc(wiRef, {
+      taskGroupId: String(taskGroupId),
+      weekStartDate,
+      content,
+      status: "TODO",
+      note: note || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return {
+      id: docRef.id,
+      taskGroupId: String(taskGroupId),
+      weekStartDate,
+      content,
+      status: "TODO",
+      note: note || "",
+    };
+  },
 
-  update: (id: number, data: { content?: string; status?: "TODO" | "IN_PROGRESS" | "DONE"; note?: string }) =>
-    apiFetch(`/api/work-items/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
+  update: async (
+    id: string | number,
+    data: { content?: string; status?: "TODO" | "IN_PROGRESS" | "DONE"; note?: string }
+  ) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "work_items", String(id));
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
 
-  delete: (id: number) =>
-    apiFetch(`/api/work-items/${id}`, {
-      method: "DELETE",
-    }),
+  delete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "work_items", String(id));
+    await deleteDoc(docRef);
+  },
 };
 
 // ─── SIDE TASK APIs ────────────────────────────────────────────────────────
+export interface SideTaskApiData {
+  id: string;
+  name: string;
+  isDone: boolean;
+}
+
 export const sideTaskApi = {
-  getAll: (isDone?: boolean) =>
-    apiFetch<{ id: number; name: string; isDone: boolean }[]>(
-      `/api/side-tasks${isDone !== undefined ? `?isDone=${isDone}` : ""}`
-    ),
+  getAll: async (isDone?: boolean): Promise<SideTaskApiData[]> => {
+    const user = await requireAuthUser();
+    const stRef = collection(db, "users", user.uid, "side_tasks");
+    const snap = await getDocs(stRef);
+    let items = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || "",
+        isDone: data.isDone || false,
+      };
+    });
+    if (isDone !== undefined) items = items.filter((t) => t.isDone === isDone);
+    return items;
+  },
 
-  create: (name: string) =>
-    apiFetch<{ id: number; name: string; isDone: boolean }>("/api/side-tasks", {
-      method: "POST",
-      body: JSON.stringify({ name, isDone: false }),
-    }),
+  create: async (name: string): Promise<SideTaskApiData> => {
+    const user = await requireAuthUser();
+    const stRef = collection(db, "users", user.uid, "side_tasks");
+    const docRef = await addDoc(stRef, {
+      name,
+      isDone: false,
+      createdAt: serverTimestamp(),
+    });
+    return { id: docRef.id, name, isDone: false };
+  },
 
-  toggle: (id: number) =>
-    apiFetch<{ id: number; name: string; isDone: boolean }>(`/api/side-tasks/${id}/toggle`, {
-      method: "PATCH",
-    }),
+  toggle: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "side_tasks", String(id));
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const current = snap.data().isDone || false;
+      await updateDoc(docRef, { isDone: !current });
+      return { id: String(id), name: snap.data().name, isDone: !current };
+    }
+    return { id: String(id), name: "", isDone: false };
+  },
 
-  delete: (id: number) =>
-    apiFetch(`/api/side-tasks/${id}`, {
-      method: "DELETE",
-    }),
+  delete: async (id: string | number) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "side_tasks", String(id));
+    await deleteDoc(docRef);
+  },
 };

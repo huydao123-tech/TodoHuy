@@ -6,27 +6,27 @@
 export type WorkItemStatus = "TODO" | "IN_PROGRESS" | "DONE";
 
 export interface TaskGroup {
-  id: number;
+  id: string | number;
   name: string;
   color: string; // mã màu điểm nhấn
 }
 
 export interface WorkItemData {
-  id: number;
+  id: string | number;
   content: string;
   status: WorkItemStatus;
   note: string;
 }
 
 export interface SideTaskData {
-  id: number;
+  id: string | number;
   name: string;
   isDone: boolean;
 }
 
 export interface ResourceData {
-  id: number;
-  groupId: number | null;
+  id: string | number;
+  groupId: string | number | null;
   title: string;
   link: string;
   description: string;
@@ -34,9 +34,9 @@ export interface ResourceData {
 
 // ─── ĐẦU VIỆC CHÍNH ─────────────────────────────────────────
 export const TASK_GROUPS: TaskGroup[] = [
-  { id: 1, name: "Tiếng Nhật", color: "#16A34A" },       // xanh lá cây
-  { id: 2, name: "Cờ vua (Chess)", color: "#7C3AED" },   // tím hoa cà
-  { id: 3, name: "Thể hình (Gym)", color: "#D97706" },   // vàng hổ phách
+  { id: "1", name: "Tiếng Nhật", color: "#16A34A" },       // xanh lá cây
+  { id: "2", name: "Cờ vua (Chess)", color: "#7C3AED" },   // tím hoa cà
+  { id: "3", name: "Thể hình (Gym)", color: "#D97706" },   // vàng hổ phách
 ];
 
 // ─── MỤC TIÊU TUẦN (WEEKLY GOALS) ──────────────────────────
@@ -53,95 +53,130 @@ const WEEKLY_GOALS: Record<string, string> = {
   "3:1":  "Duy trì 4 buổi tập, bổ sung 20 phút cardio mỗi buổi",
 };
 
-export function getGoalText(groupId: number, absoluteOffset: number): string {
+export function getGoalText(groupId: string | number, absoluteOffset: number): string {
   return WEEKLY_GOALS[`${groupId}:${absoluteOffset}`] ?? "";
 }
 
 // ─── CÔNG VIỆC CON THEO TUẦN (WORK ITEMS) ───────────────────
 const WORK_ITEMS_MAP: Record<string, WorkItemData[]> = {
   "1:-1": [
-    { id: 1,  content: "Xong bài 25 ngữ pháp Minna",        status: "DONE",        note: "" },
-    { id: 2,  content: "Anki 50 thẻ từ vựng mỗi ngày x 7 ngày", status: "DONE",    note: "" },
-    { id: 3,  content: "Luyện nghe NHK Easy 3 bài",          status: "DONE",        note: "" },
+    { id: "1",  content: "Xong bài 25 ngữ pháp Minna",        status: "DONE",        note: "" },
+    { id: "2",  content: "Anki 50 thẻ từ vựng mỗi ngày x 7 ngày", status: "DONE",    note: "" },
+    { id: "3",  content: "Luyện nghe NHK Easy 3 bài",          status: "DONE",        note: "" },
   ],
   "1:0": [
-    { id: 4,  content: "Xong bài 26 ngữ pháp Minna",        status: "IN_PROGRESS", note: "Đang làm phần 3/5" },
-    { id: 5,  content: "Học từ vựng Anki đến bài 27",       status: "TODO",        note: "" },
-    { id: 6,  content: "Làm bài thi thử JLPT N4 lần 1",      status: "TODO",        note: "" },
+    { id: "4",  content: "Xong bài 26 ngữ pháp Minna",        status: "IN_PROGRESS", note: "Đang làm phần 3/5" },
+    { id: "5",  content: "Học từ vựng Anki đến bài 27",       status: "TODO",        note: "" },
+    { id: "6",  content: "Làm bài thi thử JLPT N4 lần 1",      status: "TODO",        note: "" },
   ],
   "1:1": [],
   "2:-1": [
-    { id: 7,  content: "50 bài giải đố tàn cuộc xe",         status: "DONE",        note: "" },
-    { id: 8,  content: "Xem chuỗi video tàn cuộc của Silman", status: "DONE",        note: "" },
+    { id: "7",  content: "50 bài giải đố tàn cuộc xe",         status: "DONE",        note: "" },
+    { id: "8",  content: "Xem chuỗi video tàn cuộc của Silman", status: "DONE",        note: "" },
   ],
   "2:0": [
-    { id: 9,  content: "Phân tích 5 ván chớp cùng Stockfish", status: "IN_PROGRESS", note: "" },
-    { id: 10, content: "Học biến thể Be3 Sicilian Najdorf", status: "TODO",        note: "" },
-    { id: 11, content: "Đấu 10 ván cờ chớp trên Lichess",    status: "TODO",        note: "" },
+    { id: "9",  content: "Phân tích 5 ván chớp cùng Stockfish", status: "IN_PROGRESS", note: "" },
+    { id: "10", content: "Học biến thể Be3 Sicilian Najdorf", status: "TODO",        note: "" },
+    { id: "11", content: "Đấu 10 ván cờ chớp trên Lichess",    status: "TODO",        note: "" },
   ],
   "2:1": [],
   "3:-1": [
-    { id: 12, content: "Đẩy ngực ngang 3x8 60kg",            status: "DONE",        note: "" },
-    { id: 13, content: "Đẩy vai qua đầu 3x10",               status: "DONE",        note: "" },
-    { id: 14, content: "Gánh đùi và kéo tạ buổi thứ 3",      status: "DONE",        note: "" },
+    { id: "12", content: "Đẩy ngực ngang 3x8 60kg",            status: "DONE",        note: "" },
+    { id: "13", content: "Đẩy vai qua đầu 3x10",               status: "DONE",        note: "" },
+    { id: "14", content: "Gánh đùi và kéo tạ buổi thứ 3",      status: "DONE",        note: "" },
   ],
   "3:0": [
-    { id: 15, content: "Đẩy ngực 62.5kg x 3 hiệp",           status: "DONE",        note: "Đã xong hôm thứ Hai" },
-    { id: 16, content: "Chạy bộ 20 phút sau buổi tập",       status: "IN_PROGRESS", note: "Đã hoàn thành 3/4 buổi" },
-    { id: 17, content: "Gánh tạ Squat 70kg x 5 lần",         status: "TODO",        note: "" },
+    { id: "15", content: "Đẩy ngực 62.5kg x 3 hiệp",           status: "DONE",        note: "Đã xong hôm thứ Hai" },
+    { id: "16", content: "Chạy bộ 20 phút sau buổi tập",       status: "IN_PROGRESS", note: "Đã hoàn thành 3/4 buổi" },
+    { id: "17", content: "Gánh tạ Squat 70kg x 5 lần",         status: "TODO",        note: "" },
   ],
   "3:1": [],
 };
 
-export function getWorkItems(groupId: number, absoluteOffset: number): WorkItemData[] {
+export function getWorkItems(groupId: string | number, absoluteOffset: number): WorkItemData[] {
   return WORK_ITEMS_MAP[`${groupId}:${absoluteOffset}`] ?? [];
 }
 
 // ─── ĐẦU VIỆC PHỤ (SIDE TASKS) ─────────────────────────────
 export const INITIAL_SIDE_TASKS: SideTaskData[] = [
-  { id: 1, name: "Đặt lịch cắt tóc cuối tuần",           isDone: false },
-  { id: 2, name: "Nộp hồ sơ gia hạn visa",               isDone: false },
-  { id: 3, name: "Mua bao đựng vợt cầu lông",           isDone: true  },
-  { id: 4, name: "Đọc bài: Kỹ năng làm việc với AI Agent", isDone: false },
-  { id: 5, name: "Kiểm tra kết quả bóng đá vòng 12",    isDone: true  },
+  { id: "1", name: "Đặt lịch cắt tóc cuối tuần",           isDone: false },
+  { id: "2", name: "Nộp hồ sơ gia hạn visa",               isDone: false },
+  { id: "3", name: "Mua bao đựng vợt cầu lông",           isDone: true  },
+  { id: "4", name: "Đọc bài: Kỹ năng làm việc với AI Agent", isDone: false },
+  { id: "5", name: "Kiểm tra kết quả bóng đá vòng 12",    isDone: true  },
 ];
 
 // ─── TÀI LIỆU THAM KHẢO (RESOURCES) ────────────────────────
 export const RESOURCES: ResourceData[] = [
-  { id: 1, groupId: 1, title: "Minna no Nihongo Sơ cấp I", link: "https://example.com", description: "Giáo trình chính đang học" },
-  { id: 2, groupId: 1, title: "Bộ thẻ Anki tiếng Nhật N4", link: "https://ankiweb.net", description: "Flashcard từ vựng ôn tập mỗi ngày" },
-  { id: 3, groupId: 2, title: "Nghiên cứu Lichess - Khai cuộc Sicilian", link: "https://lichess.org", description: "Hệ thống biến thể Sicilian Defence" },
-  { id: 4, groupId: null, title: "Kết quả bóng đá Việt Nam", link: "https://example.com", description: "Tin tức các giải đấu bóng đá trong nước" },
-  { id: 5, groupId: null, title: "Kinh nghiệm ứng dụng AI Agent", link: "https://example.com", description: "Tài liệu phương pháp làm việc cùng Agent" },
+  { id: "1", groupId: "1", title: "Minna no Nihongo Sơ cấp I", link: "https://example.com", description: "Giáo trình chính đang học" },
+  { id: "2", groupId: "1", title: "Bộ thẻ Anki tiếng Nhật N4", link: "https://ankiweb.net", description: "Flashcard từ vựng ôn tập mỗi ngày" },
+  { id: "3", groupId: "2", title: "Nghiên cứu Lichess - Khai cuộc Sicilian", link: "https://lichess.org", description: "Hệ thống biến thể Sicilian Defence" },
+  { id: "4", groupId: null, title: "Kết quả bóng đá Việt Nam", link: "https://example.com", description: "Tin tức các giải đấu bóng đá trong nước" },
+  { id: "5", groupId: null, title: "Kinh nghiệm ứng dụng AI Agent", link: "https://example.com", description: "Tài liệu phương pháp làm việc cùng Agent" },
 ];
 
-// ─── TIỆN ÍCH TÍNH TUẦN ────────────────────────────────────
-// Mốc chuẩn: Thứ Hai 31/08/2026 = absolute offset 0
-const BASE_WEEK_MS = new Date(2026, 7, 31).getTime();
-const DAY_MS = 24 * 60 * 60 * 1000;
+// ─── TIỆN ÍCH TÍNH TUẦN DÙNG CHUNG VỚI FLUTTER ───────────────
+export function getMonday(d: Date = new Date()): Date {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+export function formatWeekDateStr(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getStartOfWeekByOffset(absoluteOffset: number = 0): Date {
+  const monday = getMonday();
+  monday.setDate(monday.getDate() + absoluteOffset * 7);
+  return monday;
+}
+
+export function getWeekDateStr(absoluteOffset: number = 0): string {
+  return formatWeekDateStr(getStartOfWeekByOffset(absoluteOffset));
+}
 
 export function getWeekRange(absoluteOffset: number): string {
-  const start = new Date(BASE_WEEK_MS + absoluteOffset * 7 * DAY_MS);
-  const end   = new Date(start.getTime() + 6 * DAY_MS);
+  const start = getStartOfWeekByOffset(absoluteOffset);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
   const fmt = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
   return `${fmt(start)} - ${fmt(end)}`;
 }
 
 export function getWeekYear(absoluteOffset: number): number {
-  const d = new Date(BASE_WEEK_MS + absoluteOffset * 7 * DAY_MS);
-  return d.getFullYear();
+  return getStartOfWeekByOffset(absoluteOffset).getFullYear();
 }
 
 export function getNavLabel(absoluteOffset: number): string {
-  const start = new Date(BASE_WEEK_MS + absoluteOffset * 7 * DAY_MS);
-  const end   = new Date(start.getTime() + 6 * DAY_MS);
+  const start = getStartOfWeekByOffset(absoluteOffset);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
   const fmt = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
   return `${fmt(start)} - ${fmt(end)}/${end.getFullYear()}`;
 }
 
+export function dateStrToOffset(weekStartDateStr: string): number {
+  if (!weekStartDateStr) return 0;
+  const currentMonday = getMonday();
+  const parts = weekStartDateStr.split("-").map(Number);
+  if (parts.length !== 3) return 0;
+  // Year, Month (0-based), Day
+  const targetMonday = new Date(parts[0], parts[1] - 1, parts[2]);
+  targetMonday.setHours(0, 0, 0, 0);
+  const diffMs = targetMonday.getTime() - currentMonday.getTime();
+  return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+}
+
 // ─── GHI CHÚ PHONG CÁCH NOTION GALLERY ───────────────────────
 export interface GalleryNote {
-  id: number;
+  id: string | number;
   title: string;
   content: string;
   category: "Ý tưởng" | "Công việc" | "Học tập" | "Cá nhân" | "Dự án";

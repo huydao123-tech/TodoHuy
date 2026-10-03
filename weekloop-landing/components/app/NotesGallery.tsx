@@ -178,7 +178,7 @@ export default function NotesGallery() {
     } catch {}
   };
 
-  const handleDeleteNote = async (id: number, e?: React.MouseEvent) => {
+  const handleDeleteNote = async (id: string | number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const next = notes.filter((n) => n.id !== id);
     updateLocalNotes(next);

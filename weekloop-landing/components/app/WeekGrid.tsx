@@ -54,7 +54,7 @@ function GoalCard({
   onCycleStatus,
   onOpenTaskDetail,
 }: {
-  groupId: number;
+  groupId: string | number;
   color: string;
   name: string;
   absoluteOffset: number;
@@ -62,19 +62,19 @@ function GoalCard({
   weekLabel?: string;
   goal?: string;
   workItems?: WorkItemData[];
-  onRemoveFromWeek?: (groupId: number, absoluteOffset: number, name: string) => void;
-  onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
-  onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
-  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
-  onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
-  onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
-  onOpenTaskDetail?: (item: WorkItemData, groupId: number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
+  onRemoveFromWeek?: (groupId: string | number, absoluteOffset: number, name: string) => void;
+  onSaveGoal?: (groupId: string | number, absoluteOffset: number, text: string) => void;
+  onAddItem?: (groupId: string | number, absoluteOffset: number, content: string) => void;
+  onUpdateItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
+  onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
   const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
   const currentItems = workItems !== undefined ? workItems : fallbackWorkItems;
 
   const [localItems, setLocalItems] = useState<WorkItemData[]>(currentItems);
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | number | null>(null);
   const [editItemVal, setEditItemVal] = useState("");
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemText, setNewItemText] = useState("");
@@ -83,7 +83,9 @@ function GoalCard({
     setLocalItems(currentItems);
   }, [currentItems]);
 
-  const cycleStatus = useCallback((id: number) => {
+  const pendingCount = currentItems.filter((item) => item.status !== "DONE").length;
+
+  const cycleStatus = useCallback((id: string | number) => {
     if (isPast) return;
     const cycle: WorkItemStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
     setLocalItems((prev) =>
@@ -126,7 +128,6 @@ function GoalCard({
         background: "#fff",
         marginBottom: "0.625rem",
         overflow: "hidden",
-        opacity: isPast ? 0.76 : 1,
         transition: "box-shadow 0.15s ease",
       }}
     >
@@ -138,10 +139,10 @@ function GoalCard({
           justifyContent: "space-between",
           padding: "0.5rem 0.75rem",
           borderBottom: "1px solid var(--border)",
-          background: "var(--bg-alt)",
+          background: isPast ? "rgba(245, 245, 244, 0.75)" : "var(--bg-alt)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
           <span
             style={{
               width: 8,
@@ -161,36 +162,68 @@ function GoalCard({
           >
             {name}
           </span>
+          {pendingCount > 0 && (
+            <span
+              style={{
+                fontSize: "0.625rem",
+                color: "var(--text-muted)",
+                fontWeight: 600,
+                background: "var(--border)",
+                padding: "0.05rem 0.35rem",
+                borderRadius: "var(--radius-pill)",
+              }}
+            >
+              {pendingCount}
+            </span>
+          )}
         </div>
 
-        {onRemoveFromWeek && (
-          <button
-            onClick={() => onRemoveFromWeek(groupId, absoluteOffset, name)}
-            title="Bỏ khỏi tuần này"
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-faint)",
-              cursor: "pointer",
-              padding: "0.15rem 0.3rem",
-              borderRadius: "var(--radius-sm)",
-              display: "flex",
-              alignItems: "center",
-              opacity: 0.45,
-              transition: "opacity 0.15s ease, color 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.opacity = "1";
-              (e.currentTarget as HTMLElement).style.color = "var(--text)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.opacity = "0.45";
-              (e.currentTarget as HTMLElement).style.color = "var(--text-faint)";
-            }}
-          >
-            <X size={12} />
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+          {isPast ? (
+            <span
+              style={{
+                fontSize: "0.625rem",
+                fontWeight: 650,
+                padding: "0.1rem 0.4rem",
+                borderRadius: "var(--radius-pill)",
+                background: "#E7E5E4",
+                color: "#78716C",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Tuần cũ
+            </span>
+          ) : (
+            onRemoveFromWeek && (
+              <button
+                onClick={() => onRemoveFromWeek(groupId, absoluteOffset, name)}
+                title="Bỏ khỏi tuần này"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-faint)",
+                  cursor: "pointer",
+                  padding: "0.15rem 0.3rem",
+                  borderRadius: "var(--radius-sm)",
+                  display: "flex",
+                  alignItems: "center",
+                  opacity: 0.45,
+                  transition: "opacity 0.15s ease, color 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.opacity = "1";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.opacity = "0.45";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-faint)";
+                }}
+              >
+                <X size={12} />
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {/* Khi chưa có công việc nào và không mở form thêm */}
@@ -528,35 +561,37 @@ function WeekColumn({
   taskGroups: TaskGroup[];
   goalsMap: Record<string, string>;
   workItemsMap: Record<string, WorkItemData[]>;
-  excludedByWeek?: Record<number, number[]>;
-  onRemoveFromWeek?: (groupId: number, absoluteOffset: number, name: string) => void;
-  onAddGroupToWeek?: (groupId: number, absoluteOffset: number) => void;
+  excludedByWeek?: Record<number, (string | number)[]>;
+  onRemoveFromWeek?: (groupId: string | number, absoluteOffset: number, name: string) => void;
+  onAddGroupToWeek?: (groupId: string | number, absoluteOffset: number) => void;
   onOpenCreateGroupModal?: () => void;
-  onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
-  onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
-  onUpdateItem?: (groupId: number, absoluteOffset: number, itemId: number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
-  onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
-  onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
-  onOpenTaskDetail?: (item: WorkItemData, groupId: number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
+  onSaveGoal?: (groupId: string | number, absoluteOffset: number, text: string) => void;
+  onAddItem?: (groupId: string | number, absoluteOffset: number, content: string) => void;
+  onUpdateItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
+  onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
 }) {
   const reduce = useReducedMotion();
   const isRealCurrentWeek = absoluteOffset === 0;
   const isCenterCol = colOffset === 0;
-  const isPast = colOffset === -1;
+  const isPast = absoluteOffset < 0;
 
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const excludedIds = excludedByWeek?.[absoluteOffset] ?? [];
-  const visibleGroups = taskGroups.filter((g) => !excludedIds.includes(g.id));
-  const excludedGroups = taskGroups.filter((g) => excludedIds.includes(g.id));
+  const excludedIds = (excludedByWeek?.[absoluteOffset] ?? []).map(String);
+  const visibleGroups = taskGroups.filter((g) => !excludedIds.includes(String(g.id)));
+  const excludedGroups = taskGroups.filter((g) => excludedIds.includes(String(g.id)));
 
   const colLabel =
-    colOffset === -1
-      ? "TUẦN TRƯỚC"
-      : viewOffset === 0 && colOffset === 0
+    absoluteOffset === 0
       ? "TUẦN NÀY"
-      : colOffset === 0
-      ? "TUẦN ĐANG XEM"
-      : "TUẦN SAU";
+      : absoluteOffset === -1
+      ? "TUẦN TRƯỚC"
+      : absoluteOffset === 1
+      ? "TUẦN SAU"
+      : absoluteOffset < -1
+      ? `TUẦN CŨ (${Math.abs(absoluteOffset)} tuần trước)`
+      : `TUẦN TỚI (+${absoluteOffset} tuần)`;
 
   return (
     <div
@@ -844,20 +879,20 @@ export interface WeekGridProps {
   taskGroups?: TaskGroup[];
   goalsMap?: Record<string, string>;
   workItemsMap?: Record<string, WorkItemData[]>;
-  excludedByWeek?: Record<number, number[]>;
-  onRemoveFromWeek?: (groupId: number, absoluteOffset: number, name: string) => void;
-  onAddGroupToWeek?: (groupId: number, absoluteOffset: number) => void;
+  excludedByWeek?: Record<number, (string | number)[]>;
+  onRemoveFromWeek?: (groupId: string | number, absoluteOffset: number, name: string) => void;
+  onAddGroupToWeek?: (groupId: string | number, absoluteOffset: number) => void;
   onOpenCreateGroupModal?: () => void;
-  onSaveGoal?: (groupId: number, absoluteOffset: number, text: string) => void;
-  onAddItem?: (groupId: number, absoluteOffset: number, content: string) => void;
+  onSaveGoal?: (groupId: string | number, absoluteOffset: number, text: string) => void;
+  onAddItem?: (groupId: string | number, absoluteOffset: number, content: string) => void;
   onUpdateItem?: (
-    groupId: number,
+    groupId: string | number,
     absoluteOffset: number,
-    itemId: number,
+    itemId: string | number,
     updates: { content?: string; note?: string; status?: WorkItemStatus } | string
   ) => void;
-  onDeleteItem?: (groupId: number, absoluteOffset: number, itemId: number) => void;
-  onCycleStatus?: (groupId: number, absoluteOffset: number, itemId: number) => void;
+  onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }
 
 export default function WeekGrid({
@@ -879,7 +914,7 @@ export default function WeekGrid({
 
   const [detailTask, setDetailTask] = useState<{
     item: WorkItemData;
-    groupId: number;
+    groupId: string | number;
     groupName: string;
     groupColor: string;
     absoluteOffset: number;
@@ -889,7 +924,7 @@ export default function WeekGrid({
   const handleOpenTaskDetail = useCallback(
     (
       item: WorkItemData,
-      groupId: number,
+      groupId: string | number,
       groupName: string,
       groupColor: string,
       absoluteOffset: number,
@@ -909,7 +944,7 @@ export default function WeekGrid({
 
   const handleSaveTaskDetail = useCallback(
     (
-      taskId: number,
+      taskId: string | number,
       updates: { content: string; note: string; status: WorkItemStatus }
     ) => {
       if (!detailTask) return;
@@ -927,7 +962,7 @@ export default function WeekGrid({
   );
 
   const handleDeleteTaskDetail = useCallback(
-    (taskId: number) => {
+    (taskId: string | number) => {
       if (!detailTask) return;
       if (onDeleteItem) {
         onDeleteItem(detailTask.groupId, detailTask.absoluteOffset, taskId);
@@ -1012,6 +1047,7 @@ export default function WeekGrid({
         groupName={detailTask ? detailTask.groupName : ""}
         groupColor={detailTask ? detailTask.groupColor : "var(--accent)"}
         weekLabel={detailTask ? detailTask.weekLabel : ""}
+        isPast={detailTask ? detailTask.absoluteOffset < 0 : false}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTaskDetail}
       />
