@@ -279,19 +279,26 @@ export const dashboardApi = {
       };
     });
 
-    // 4. Side Tasks
+    // 4. Side Tasks (chỉ lấy những việc chưa hoàn thành, dọn dẹp các việc đã tick xong)
     const stRef = collection(db, "users", uid, "side_tasks");
     const stSnap = await getDocs(stRef);
-    const sideTasks = stSnap.docs.map((d) => {
+    const sideTasks: { id: string; name: string; isDone: boolean }[] = [];
+    stSnap.docs.forEach((d) => {
       const data = d.data();
-      return {
-        id: d.id,
-        name: (data.name as string) || "",
-        isDone: (data.isDone as boolean) || false,
-      };
+      const isDone = (data.isDone as boolean) || false;
+      if (!isDone) {
+        sideTasks.push({
+          id: d.id,
+          name: (data.name as string) || "",
+          isDone: false,
+        });
+      } else {
+        // Tự động xóa hẳn các việc phụ đã tick hoàn thành trước đó khỏi DB
+        deleteDoc(doc(db, "users", uid, "side_tasks", d.id)).catch(() => {});
+      }
     });
 
-    const sideTasksDoneCount = sideTasks.filter((t) => t.isDone).length;
+    const sideTasksDoneCount = 0;
     const sideTasksTotalCount = sideTasks.length;
 
     return {
@@ -642,20 +649,20 @@ export interface SideTaskApiData {
 }
 
 export const sideTaskApi = {
-  getAll: async (isDone?: boolean): Promise<SideTaskApiData[]> => {
+  getAll: async (): Promise<SideTaskApiData[]> => {
     const user = await requireAuthUser();
     const stRef = collection(db, "users", user.uid, "side_tasks");
     const snap = await getDocs(stRef);
-    let items = snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        name: data.name || "",
-        isDone: data.isDone || false,
-      };
-    });
-    if (isDone !== undefined) items = items.filter((t) => t.isDone === isDone);
-    return items;
+    return snap.docs
+      .map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: (data.name as string) || "",
+          isDone: (data.isDone as boolean) || false,
+        };
+      })
+      .filter((t) => !t.isDone);
   },
 
   create: async (name: string): Promise<SideTaskApiData> => {
@@ -669,16 +676,10 @@ export const sideTaskApi = {
     return { id: docRef.id, name, isDone: false };
   },
 
-  toggle: async (id: string | number) => {
+  completeAndRemove: async (id: string | number) => {
     const user = await requireAuthUser();
     const docRef = doc(db, "users", user.uid, "side_tasks", String(id));
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const current = snap.data().isDone || false;
-      await updateDoc(docRef, { isDone: !current });
-      return { id: String(id), name: snap.data().name, isDone: !current };
-    }
-    return { id: String(id), name: "", isDone: false };
+    await deleteDoc(docRef);
   },
 
   delete: async (id: string | number) => {

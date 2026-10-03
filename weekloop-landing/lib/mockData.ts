@@ -101,9 +101,7 @@ export function getWorkItems(groupId: string | number, absoluteOffset: number): 
 export const INITIAL_SIDE_TASKS: SideTaskData[] = [
   { id: "1", name: "Đặt lịch cắt tóc cuối tuần",           isDone: false },
   { id: "2", name: "Nộp hồ sơ gia hạn visa",               isDone: false },
-  { id: "3", name: "Mua bao đựng vợt cầu lông",           isDone: true  },
   { id: "4", name: "Đọc bài: Kỹ năng làm việc với AI Agent", isDone: false },
-  { id: "5", name: "Kiểm tra kết quả bóng đá vòng 12",    isDone: true  },
 ];
 
 // ─── TÀI LIỆU THAM KHẢO (RESOURCES) ────────────────────────

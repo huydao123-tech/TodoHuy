@@ -210,7 +210,7 @@ export default function Dashboard() {
         // Đảm bảo không trùng ID
         const uniqueGroups = Array.from(new Map(activeList.map((item) => [item.id, item])).values());
         setTaskGroups(uniqueGroups);
-        setSideTasks(data.sideTasks ?? []);
+        setSideTasks((data.sideTasks ?? []).filter((t) => !t.isDone));
 
         const gMap: Record<string, string> = {};
         const wMap: Record<string, WorkItemData[]> = {};
@@ -237,7 +237,7 @@ export default function Dashboard() {
       })
       .catch(() => {
         setTaskGroups(TASK_GROUPS);
-        setSideTasks(INITIAL_SIDE_TASKS);
+        setSideTasks(INITIAL_SIDE_TASKS.filter((t) => !t.isDone));
 
         const initialGMap: Record<string, string> = {};
         const initialWMap: Record<string, WorkItemData[]> = {};
@@ -446,11 +446,25 @@ export default function Dashboard() {
   }, []);
 
   // ─── SIDE TASKS ──────────────────────────────────────────────────────────
-  const handleToggleSideTask = useCallback((id: string | number) => {
-    setSideTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isDone: !t.isDone } : t))
-    );
-    sideTaskApi.toggle(id).catch(console.error);
+  const handleCompleteSideTask = useCallback((task: SideTaskData) => {
+    setSideTasks((prev) => prev.filter((t) => t.id !== task.id));
+    sideTaskApi.completeAndRemove(task.id).catch(console.error);
+
+    setToast({
+      text: `Đã hoàn thành và xóa "${task.name}"`,
+      actionText: "Hoàn tác",
+      onAction: async () => {
+        try {
+          const created = await sideTaskApi.create(task.name);
+          setSideTasks((prev) => [
+            ...prev,
+            { id: created.id, name: task.name, isDone: false },
+          ]);
+        } catch (e) {
+          console.error("Lỗi hoàn tác việc phụ:", e);
+        }
+      },
+    });
   }, []);
 
   const handleAddSideTask = useCallback(async (name: string) => {
@@ -464,9 +478,25 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  const handleDeleteSideTask = useCallback((id: string | number) => {
-    setSideTasks((prev) => prev.filter((t) => t.id !== id));
-    sideTaskApi.delete(id).catch(console.error);
+  const handleDeleteSideTask = useCallback((task: SideTaskData) => {
+    setSideTasks((prev) => prev.filter((t) => t.id !== task.id));
+    sideTaskApi.delete(task.id).catch(console.error);
+
+    setToast({
+      text: `Đã xóa "${task.name}"`,
+      actionText: "Hoàn tác",
+      onAction: async () => {
+        try {
+          const created = await sideTaskApi.create(task.name);
+          setSideTasks((prev) => [
+            ...prev,
+            { id: created.id, name: task.name, isDone: false },
+          ]);
+        } catch (e) {
+          console.error("Lỗi hoàn tác xóa việc phụ:", e);
+        }
+      },
+    });
   }, []);
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -1180,7 +1210,7 @@ export default function Dashboard() {
               </div>
               <SidePanel
                 sideTasks={sideTasks}
-                onToggle={handleToggleSideTask}
+                onComplete={handleCompleteSideTask}
                 onAdd={handleAddSideTask}
                 onDelete={handleDeleteSideTask}
               />

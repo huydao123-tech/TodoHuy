@@ -5,38 +5,45 @@ import type { SideTaskData } from "@/lib/mockData";
 import { CheckSquare, Square, Plus, Trash } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 
-type Filter = "all" | "pending" | "done";
-
 interface SidePanelProps {
   sideTasks: SideTaskData[];
-  onToggle: (id: string | number) => void;
+  onComplete: (task: SideTaskData) => void;
   onAdd?: (name: string) => void;
-  onDelete?: (id: string | number) => void;
+  onDelete?: (task: SideTaskData) => void;
+  // Giữ lại onToggle tương thích ngược nếu có chỗ nào gọi
+  onToggle?: (id: string | number) => void;
 }
 
 export default function SidePanel({
   sideTasks,
-  onToggle,
+  onComplete,
   onAdd,
   onDelete,
+  onToggle,
 }: SidePanelProps) {
-  const [filter, setFilter] = useState<Filter>("all");
   const [newTaskText, setNewTaskText] = useState("");
+  const [completingIds, setCompletingIds] = useState<Set<string | number>>(new Set());
   const reduce = useReducedMotion();
 
-  const filtered = sideTasks.filter((t) => {
-    if (filter === "pending") return !t.isDone;
-    if (filter === "done") return t.isDone;
-    return true;
-  });
+  const handleCompleteClick = (task: SideTaskData) => {
+    if (completingIds.has(task.id)) return;
 
-  const pendingCount = sideTasks.filter((t) => !t.isDone).length;
+    // Kích hoạt trạng thái hoàn thành kèm hiệu ứng gạch ngang 350ms như app Flutter
+    setCompletingIds((prev) => new Set(prev).add(task.id));
 
-  const FILTERS: { key: Filter; label: string }[] = [
-    { key: "all", label: "Tất cả" },
-    { key: "pending", label: "Chưa xong" },
-    { key: "done", label: "Đã xong" },
-  ];
+    setTimeout(() => {
+      if (onComplete) {
+        onComplete(task);
+      } else if (onToggle) {
+        onToggle(task.id);
+      }
+      setCompletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
+    }, 350);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTaskText.trim()) {
@@ -64,7 +71,7 @@ export default function SidePanel({
       {/* Tiêu đề thanh bên phải */}
       <div
         style={{
-          padding: "0.875rem 1rem 0.625rem",
+          padding: "0.875rem 1rem 0.75rem",
           borderBottom: "1px solid var(--border)",
           background: "var(--bg-alt)",
           position: "sticky",
@@ -77,175 +84,187 @@ export default function SidePanel({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "0.625rem",
           }}
         >
           <p
             style={{
               fontFamily: "var(--font-geist-mono), monospace",
-              fontSize: "0.625rem",
+              fontSize: "0.6875rem",
               textTransform: "uppercase",
-              letterSpacing: "0.16em",
+              letterSpacing: "0.14em",
               color: "var(--text-faint)",
+              fontWeight: 600,
             }}
           >
             Đầu việc phụ
           </p>
-          {pendingCount > 0 && (
+          {sideTasks.length > 0 && (
             <span
               style={{
                 background: "var(--accent-bg)",
                 color: "var(--accent)",
                 fontSize: "0.6875rem",
                 fontWeight: 600,
-                padding: "0.1rem 0.45rem",
+                padding: "0.125rem 0.5rem",
                 borderRadius: "var(--radius-pill)",
                 fontFamily: "var(--font-geist-mono), monospace",
               }}
             >
-              {pendingCount} chưa xong
+              {sideTasks.length} việc
             </span>
           )}
         </div>
-
-        {/* Nút lọc danh sách */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.25rem",
-          }}
-        >
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "var(--radius-pill)",
-                border: "1px solid",
-                borderColor: filter === f.key ? "var(--accent)" : "var(--border)",
-                background: filter === f.key ? "var(--accent-bg)" : "transparent",
-                color: filter === f.key ? "var(--accent)" : "var(--text-muted)",
-                cursor: "pointer",
-                fontWeight: filter === f.key ? 600 : 400,
-                transition: "all 0.15s ease",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Danh sách việc phụ */}
-      <div style={{ padding: "0.625rem 0.75rem", flex: 1 }}>
+      {/* Danh sách việc phụ (không chia tab) */}
+      <div style={{ padding: "0.625rem 0.75rem", flex: 1, display: "flex", flexDirection: "column" }}>
         <AnimatePresence initial={false}>
-          {filtered.map((task) => (
-            <motion.div
-              key={task.id}
-              layout
-              initial={reduce ? false : { opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0.3rem 0.25rem",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              <button
-                onClick={() => onToggle(task.id)}
+          {sideTasks.map((task) => {
+            const isCompleting = completingIds.has(task.id);
+            return (
+              <motion.div
+                key={task.id}
+                layout
+                initial={reduce ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: isCompleting ? 0.45 : 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 style={{
                   display: "flex",
-                  alignItems: "flex-start",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.35rem 0.35rem",
+                  borderRadius: "var(--radius-sm)",
                   gap: "0.5rem",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  flex: 1,
-                  padding: 0,
                 }}
               >
-                {task.isDone ? (
-                  <CheckSquare
-                    size={16}
-                    weight="fill"
-                    color="var(--accent)"
-                    style={{ flexShrink: 0, marginTop: 1 }}
-                  />
-                ) : (
-                  <Square
-                    size={16}
-                    weight="regular"
-                    color="var(--text-faint)"
-                    style={{ flexShrink: 0, marginTop: 1 }}
-                  />
-                )}
-                <span
-                  style={{
-                    fontSize: "0.8125rem",
-                    color: task.isDone ? "var(--text-faint)" : "var(--text)",
-                    textDecoration: task.isDone ? "line-through" : "none",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {task.name}
-                </span>
-              </button>
-
-              {onDelete && (
                 <button
-                  onClick={() => onDelete(task.id)}
-                  title="Xóa việc phụ này"
+                  type="button"
+                  onClick={() => handleCompleteClick(task)}
+                  title="Đánh dấu hoàn thành để xóa việc này"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    color: "var(--text-faint)",
-                    padding: "0.2rem",
-                    display: "flex",
-                    alignItems: "center",
-                    opacity: 0.6,
-                    transition: "opacity 0.15s ease, color 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.opacity = "1";
-                    (e.currentTarget as HTMLElement).style.color = "#DC2626";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.opacity = "0.6";
-                    (e.currentTarget as HTMLElement).style.color = "var(--text-faint)";
+                    textAlign: "left",
+                    flex: 1,
+                    padding: 0,
+                    minWidth: 0,
                   }}
                 >
-                  <Trash size={13} />
+                  {isCompleting ? (
+                    <CheckSquare
+                      size={17}
+                      weight="fill"
+                      color="var(--accent)"
+                      style={{ flexShrink: 0, marginTop: 1, transition: "transform 0.15s ease", transform: "scale(1.15)" }}
+                    />
+                  ) : (
+                    <Square
+                      size={17}
+                      weight="regular"
+                      color="var(--text-faint)"
+                      style={{ flexShrink: 0, marginTop: 1 }}
+                    />
+                  )}
+                  <span
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: isCompleting ? "var(--text-faint)" : "var(--text)",
+                      textDecoration: isCompleting ? "line-through" : "none",
+                      lineHeight: 1.4,
+                      wordBreak: "break-word",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {task.name}
+                  </span>
                 </button>
-              )}
-            </motion.div>
-          ))}
+
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(task)}
+                    title="Xóa việc phụ này"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--text-faint)",
+                      padding: "0.25rem",
+                      display: "flex",
+                      alignItems: "center",
+                      opacity: 0.5,
+                      transition: "opacity 0.15s ease, color 0.15s ease",
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.opacity = "1";
+                      (e.currentTarget as HTMLElement).style.color = "#DC2626";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.opacity = "0.5";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text-faint)";
+                    }}
+                  >
+                    <Trash size={14} />
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
-        {filtered.length === 0 && (
-          <p
+        {sideTasks.length === 0 && (
+          <div
             style={{
-              fontSize: "0.8125rem",
-              color: "var(--text-faint)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "2.5rem 1rem",
               textAlign: "center",
-              padding: "1.5rem 0",
-              fontStyle: "italic",
+              flex: 1,
             }}
           >
-            {filter === "done"
-              ? "Chưa có việc nào hoàn thành."
-              : filter === "pending"
-              ? "Đã hoàn thành hết việc phụ!"
-              : "Không có đầu việc phụ nào."}
-          </p>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "var(--accent-bg)",
+                color: "var(--accent)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "0.75rem",
+              }}
+            >
+              <CheckSquare size={22} weight="fill" />
+            </div>
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                color: "var(--text)",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Tuyệt vời! Không còn việc phụ nào.
+            </p>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--text-faint)",
+                lineHeight: 1.4,
+              }}
+            >
+              Nhập việc cần làm vào ô bên dưới để ghi nhanh.
+            </p>
+          </div>
         )}
       </div>
 
@@ -268,9 +287,10 @@ export default function SidePanel({
             border: "1px solid var(--border)",
             borderRadius: "var(--radius)",
             padding: "0.375rem 0.5rem",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
           }}
         >
-          <Plus size={13} color="var(--text-faint)" style={{ flexShrink: 0 }} />
+          <Plus size={14} color="var(--text-faint)" style={{ flexShrink: 0 }} />
           <input
             type="text"
             value={newTaskText}
