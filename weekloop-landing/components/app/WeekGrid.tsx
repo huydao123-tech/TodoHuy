@@ -342,12 +342,12 @@ function GoalCard({
                     }}
                     onMouseEnter={(e) => {
                       (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
-                      const actions = e.currentTarget.querySelector('.item-actions') as HTMLElement;
+                      const actions = e.currentTarget.querySelector('.normal-item-actions') as HTMLElement;
                       if (actions) actions.style.opacity = "1";
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLElement).style.background = "transparent";
-                      const actions = e.currentTarget.querySelector('.item-actions') as HTMLElement;
+                      const actions = e.currentTarget.querySelector('.normal-item-actions') as HTMLElement;
                       if (actions) actions.style.opacity = "0";
                     }}
                   >
@@ -381,7 +381,7 @@ function GoalCard({
 
                     {!isPast ? (
                       <div
-                        className="item-actions"
+                        className="item-actions normal-item-actions"
                         style={{ display: "flex", gap: "0.3rem", opacity: 0, transition: "opacity 0.15s ease" }}
                       >
                         <button
@@ -449,8 +449,8 @@ function GoalCard({
                     ) : (
                       item.status !== "DONE" && onMoveTaskToCurrentWeek && (
                         <div
-                          className="item-actions"
-                          style={{ display: "flex", gap: "0.3rem", opacity: 0.85, transition: "opacity 0.15s ease" }}
+                          className="past-item-actions"
+                          style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}
                         >
                           <button
                             onClick={(e) => {
@@ -463,12 +463,22 @@ function GoalCard({
                               borderRadius: "var(--radius-pill)",
                               cursor: "pointer",
                               color: "var(--accent)",
-                              padding: "0.15rem 0.4rem",
+                              padding: "0.2rem 0.5rem",
                               display: "inline-flex",
                               alignItems: "center",
                               gap: "0.25rem",
                               fontSize: "0.6875rem",
                               fontWeight: 600,
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.background = "var(--accent)";
+                              (e.currentTarget as HTMLElement).style.color = "#fff";
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
+                              (e.currentTarget as HTMLElement).style.color = "var(--accent)";
                             }}
                             title={isVietnamese ? "Dời sang tuần này" : "Move to this week"}
                           >
@@ -591,6 +601,7 @@ function WeekColumn({
   onDeleteItem,
   onCycleStatus,
   onOpenTaskDetail,
+  onMoveTaskToCurrentWeek,
 }: {
   absoluteOffset: number;
   colOffset: -1 | 0 | 1;
@@ -608,6 +619,7 @@ function WeekColumn({
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
+  onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }) {
   const { t, isVietnamese } = useLanguage();
   const reduce = useReducedMotion();
@@ -724,6 +736,7 @@ function WeekColumn({
                   onDeleteItem={onDeleteItem}
                   onCycleStatus={onCycleStatus}
                   onOpenTaskDetail={onOpenTaskDetail}
+                  onMoveTaskToCurrentWeek={onMoveTaskToCurrentWeek}
                 />
               </motion.div>
             );
@@ -931,6 +944,8 @@ export interface WeekGridProps {
   ) => void;
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
+  onMoveTaskToNextWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }
 
 export default function WeekGrid({
@@ -947,6 +962,8 @@ export default function WeekGrid({
   onUpdateItem,
   onDeleteItem,
   onCycleStatus,
+  onMoveTaskToCurrentWeek,
+  onMoveTaskToNextWeek,
 }: WeekGridProps) {
   const { t, isVietnamese } = useLanguage();
   const [mobileActiveCol, setMobileActiveCol] = useState<-1 | 0 | 1>(0);
@@ -1073,6 +1090,7 @@ export default function WeekGrid({
               onDeleteItem={onDeleteItem}
               onCycleStatus={onCycleStatus}
               onOpenTaskDetail={handleOpenTaskDetail}
+              onMoveTaskToCurrentWeek={onMoveTaskToCurrentWeek}
             />
           </div>
         ))}
@@ -1089,6 +1107,16 @@ export default function WeekGrid({
         isPast={detailTask ? detailTask.absoluteOffset < 0 : false}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTaskDetail}
+        onMoveToCurrentWeek={
+          onMoveTaskToCurrentWeek && detailTask
+            ? (taskId) => onMoveTaskToCurrentWeek(detailTask.groupId, detailTask.absoluteOffset, taskId)
+            : undefined
+        }
+        onMoveToNextWeek={
+          onMoveTaskToNextWeek && detailTask
+            ? (taskId) => onMoveTaskToNextWeek(detailTask.groupId, detailTask.absoluteOffset, taskId)
+            : undefined
+        }
       />
 
       <style>{`

@@ -15,6 +15,7 @@ import {
   getGoalText,
   getWorkItems,
   getWeekDateStr,
+  getWeekRange,
   dateStrToOffset,
 } from "@/lib/mockData";
 import {
@@ -456,11 +457,11 @@ export default function Dashboard() {
     []
   );
 
-    const handleMoveTaskToCurrentWeek = useCallback(
-    async (groupId: string | number, fromOffset: number, itemId: string | number) => {
+  const handleMoveTaskToWeek = useCallback(
+    async (groupId: string | number, fromOffset: number, itemId: string | number, targetOffset: number = 0) => {
       const fromKey = `${groupId}:${fromOffset}`;
-      const toKey = `${groupId}:0`;
-      const currentWeekStart = getWeekDateStr(0);
+      const toKey = `${groupId}:${targetOffset}`;
+      const targetWeekStart = getWeekDateStr(targetOffset);
 
       const itemToMove = (workItemsMap[fromKey] ?? []).find((it) => it.id === itemId);
       if (!itemToMove) return;
@@ -469,13 +470,18 @@ export default function Dashboard() {
       setWorkItemsMap((prev) => ({
         ...prev,
         [fromKey]: (prev[fromKey] ?? []).filter((it) => it.id !== itemId),
-        [toKey]: [...(prev[toKey] ?? []), { ...itemToMove, weekStartDate: currentWeekStart }],
+        [toKey]: [...(prev[toKey] ?? []), { ...itemToMove, weekStartDate: targetWeekStart }],
       }));
 
       try {
-        await workItemApi.moveToWeek(itemId, currentWeekStart);
+        await workItemApi.moveToWeek(itemId, targetWeekStart);
+        const destLabel = targetOffset === 0 
+          ? (isVietnamese ? "tuần này" : "current week")
+          : targetOffset === 1 
+            ? (isVietnamese ? "tuần sau" : "next week")
+            : getWeekRange(targetOffset);
         setToast({
-          text: isVietnamese ? `Đã dời "${itemToMove.content}" sang tuần này` : `Moved "${itemToMove.content}" to current week`,
+          text: isVietnamese ? `Đã dời "${itemToMove.content}" sang ${destLabel}` : `Moved "${itemToMove.content}" to ${destLabel}`,
           actionText: isVietnamese ? "Hoàn tác" : "Undo",
           onAction: async () => {
             const oldWeekStart = getWeekDateStr(fromOffset);
@@ -1278,6 +1284,8 @@ export default function Dashboard() {
                   onUpdateItem={handleUpdateItem}
                   onDeleteItem={handleDeleteItem}
                   onCycleStatus={handleCycleStatus}
+                  onMoveTaskToCurrentWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 0)}
+                  onMoveTaskToNextWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 1)}
                 />
               )}
             </main>

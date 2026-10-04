@@ -30,6 +30,7 @@ export interface TaskDetailModalProps {
   ) => void;
   onDelete: (taskId: string | number) => void;
   onMoveToCurrentWeek?: (taskId: string | number) => void;
+  onMoveToNextWeek?: (taskId: string | number) => void;
 }
 
 export default function TaskDetailModal({
@@ -43,6 +44,7 @@ export default function TaskDetailModal({
   onSave,
   onDelete,
   onMoveToCurrentWeek,
+  onMoveToNextWeek,
 }: TaskDetailModalProps) {
   const { t, isVietnamese } = useLanguage();
   const [content, setContent] = useState("");
@@ -301,6 +303,27 @@ export default function TaskDetailModal({
                     <span>{t.moveToCurrentWeek || (isVietnamese ? "Dời sang tuần này" : "Move to this week")}</span>
                   </button>
                 )}
+                {onMoveToNextWeek && task.status !== "DONE" && (
+                  <button
+                    type="button"
+                    className="task-cancel-btn"
+                    onClick={() => {
+                      onMoveToNextWeek(task.id);
+                      onClose();
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 0.85rem",
+                      fontWeight: 600,
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <ArrowsClockwise size={16} />
+                    <span>{t.moveToNextWeek || (isVietnamese ? "Dời sang tuần sau" : "Move to next week")}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="task-cancel-btn"
@@ -313,7 +336,7 @@ export default function TaskDetailModal({
             </div>
           ) : (
             <>
-              <div className="task-footer-left">
+              <div className="task-footer-left" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <button
                   type="button"
                   className={`task-delete-btn ${isDeleting ? "confirm-delete" : ""}`}
@@ -323,6 +346,29 @@ export default function TaskDetailModal({
                   <Trash size={15} />
                   <span>{isDeleting ? (isVietnamese ? "Xác nhận xóa?" : "Confirm delete?") : t.delete}</span>
                 </button>
+                {onMoveToNextWeek && task && task.status !== "DONE" && (
+                  <button
+                    type="button"
+                    className="task-cancel-btn"
+                    onClick={() => {
+                      onMoveToNextWeek(task.id);
+                      onClose();
+                    }}
+                    title={isVietnamese ? "Dời công việc này sang tuần sau" : "Move this task to next week"}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 0.75rem",
+                      fontSize: "0.8125rem",
+                      fontWeight: 500,
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <ArrowsClockwise size={14} />
+                    <span>{t.moveToNextWeek || (isVietnamese ? "Dời sang tuần sau" : "Move to next week")}</span>
+                  </button>
+                )}
               </div>
 
               <div className="task-footer-right">
