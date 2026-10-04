@@ -55,7 +55,7 @@ export default function Testimonials() {
               }}
               style={{
                 margin: 0,
-                background: "#fff",
+                background: "var(--card-bg, #fff)",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-lg)",
                 padding: "2rem",

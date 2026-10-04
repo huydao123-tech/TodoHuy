@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useLanguage } from "@/lib/languageContext";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const { t, isVietnamese } = useLanguage();
@@ -174,7 +175,7 @@ export default function LoginPage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "var(--bg-alt)",
+          background: "var(--bg)",
           gap: "1rem",
         }}
       >
@@ -289,7 +290,7 @@ export default function LoginPage() {
         {showForgotPassword ? (
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-lg)",
               padding: "1.75rem",
@@ -457,7 +458,7 @@ export default function LoginPage() {
             id="login-form"
             onSubmit={handleSubmit}
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-lg)",
               padding: "1.75rem",
@@ -755,7 +756,7 @@ export default function LoginPage() {
                 padding: "0.625rem 1rem",
                 borderRadius: "var(--radius)",
                 border: "1px solid var(--border)",
-                background: "#fff",
+                background: "var(--card-bg, #fff)",
                 color: "var(--text)",
                 fontSize: "0.875rem",
                 fontWeight: 540,
@@ -763,7 +764,7 @@ export default function LoginPage() {
                 transition: "background 0.15s ease",
               }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-alt)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#fff")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--card-bg, #fff)")}
             >
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.27-2.09 3.67-5.17 3.67-9.12z" />

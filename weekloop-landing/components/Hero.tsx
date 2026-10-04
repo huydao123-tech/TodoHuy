@@ -123,7 +123,7 @@ export default function Hero() {
             overflow: "hidden",
             border: "1px solid var(--border)",
             boxShadow: "0 4px 32px rgba(24,24,27,0.06), 0 1px 4px rgba(24,24,27,0.04)",
-            background: "#fff",
+            background: "var(--card-bg, #fff)",
           }}
         >
           <Image

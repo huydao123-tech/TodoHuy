@@ -129,7 +129,7 @@ function GoalCard({
       style={{
         borderRadius: "var(--radius)",
         border: "1px solid var(--border)",
-        background: "#fff",
+        background: "var(--card-bg, #fff)",
         marginBottom: "0.625rem",
         overflow: "hidden",
         transition: "box-shadow 0.15s ease",
@@ -143,7 +143,7 @@ function GoalCard({
           justifyContent: "space-between",
           padding: "0.5rem 0.75rem",
           borderBottom: "1px solid var(--border)",
-          background: isPast ? "rgba(245, 245, 244, 0.75)" : "var(--bg-alt)",
+          background: isPast ? "var(--bg)" : "var(--bg-alt)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
@@ -190,8 +190,8 @@ function GoalCard({
                 fontWeight: 650,
                 padding: "0.1rem 0.4rem",
                 borderRadius: "var(--radius-pill)",
-                background: "#E7E5E4",
-                color: "#78716C",
+                background: "var(--border)",
+                color: "var(--text-muted)",
                 letterSpacing: "0.02em",
               }}
             >
@@ -795,7 +795,7 @@ function WeekColumn({
                   bottom: "calc(100% + 4px)",
                   left: 0,
                   right: 0,
-                  background: "#fff",
+                  background: "var(--card-bg, #fff)",
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius)",
                   boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
@@ -1125,7 +1125,7 @@ export default function WeekGrid({
             padding: 0.45rem 0.5rem;
             border-radius: var(--radius-pill);
             border: 1px solid var(--border);
-            background: #fff;
+            background: var(--card-bg, #fff);
             color: var(--text-muted);
             font-size: 0.78125rem;
             font-weight: 500;

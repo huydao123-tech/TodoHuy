@@ -17,7 +17,7 @@ const TEXT_CELLS = [
     icon: BookOpen,
     title: "Reference materials",
     body: "Attach vocabulary lists, training plans, or research notes directly to a goal. Always one click away.",
-    bg: "#fff",
+    bg: "var(--card-bg, #fff)",
     textColor: "var(--text)",
     bodyColor: "var(--text-muted)",
   },
@@ -83,7 +83,7 @@ export default function Features() {
               borderRadius: "var(--radius-lg)",
               overflow: "hidden",
               border: "1px solid var(--border)",
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               position: "relative",
             }}
           >

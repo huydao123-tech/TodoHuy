@@ -209,7 +209,7 @@ export default function NotesGallery() {
         flex: 1,
         overflowY: "auto",
         padding: "1.75rem 2rem 3rem",
-        background: "#fff",
+        background: "var(--bg)",
         minHeight: "100%",
       }}
     >
@@ -362,7 +362,7 @@ export default function NotesGallery() {
                 style={{
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius)",
-                  background: "#fff",
+                  background: "var(--card-bg, #fff)",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
@@ -563,7 +563,7 @@ export default function NotesGallery() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               borderRadius: "var(--radius-lg)",
               width: "100%",
               maxWidth: 720,
@@ -671,7 +671,7 @@ export default function NotesGallery() {
                         top: "100%",
                         left: 0,
                         marginTop: "0.3rem",
-                        background: "#fff",
+                        background: "var(--card-bg, #fff)",
                         borderRadius: "var(--radius)",
                         border: "1px solid var(--border)",
                         padding: "0.4rem",

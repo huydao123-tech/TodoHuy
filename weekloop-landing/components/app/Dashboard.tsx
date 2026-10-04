@@ -688,7 +688,7 @@ export default function Dashboard() {
           justifyContent: "space-between",
           padding: "0 0.85rem",
           borderBottom: "1px solid var(--border)",
-          background: "#fff",
+          background: "var(--card-bg, #fff)",
           gap: "0.5rem",
         }}
       >
@@ -870,6 +870,7 @@ export default function Dashboard() {
           )}
 
           {/* Nút chuyển đổi ngôn ngữ */}
+          <ThemeToggle size="sm" />
           <LanguageToggle size="sm" />
 
           <button
@@ -1397,7 +1398,7 @@ export default function Dashboard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
@@ -1518,7 +1519,7 @@ export default function Dashboard() {
                                 padding: "0.2rem 0.55rem",
                                 borderRadius: "var(--radius)",
                                 border: "1px solid var(--border)",
-                                background: "#fff",
+                                background: "var(--card-bg, #fff)",
                                 cursor: "pointer",
                                 color: "var(--accent)",
                                 fontWeight: 550,
@@ -1590,7 +1591,7 @@ export default function Dashboard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
@@ -1685,7 +1686,7 @@ export default function Dashboard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
@@ -1857,7 +1858,7 @@ export default function Dashboard() {
                       border: "1px solid var(--border)",
                       fontSize: "0.78125rem",
                       outline: "none",
-                      background: "#fff",
+                      background: "var(--input-bg, #fff)",
                       color: "var(--text)",
                       maxWidth: 160,
                     }}
@@ -1933,7 +1934,7 @@ export default function Dashboard() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--card-bg, #fff)",
               borderRadius: "var(--radius-lg)",
               padding: "1.5rem",
               width: "100%",
@@ -2144,7 +2145,7 @@ export default function Dashboard() {
             transform: translateX(-100%);
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-            background: #fff !important;
+            background: var(--card-bg, #fff) !important;
           }
           #app-sidebar.mobile-drawer-open {
             transform: translateX(0);
@@ -2167,7 +2168,7 @@ export default function Dashboard() {
             transform: translateX(100%);
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
-            background: #fff !important;
+            background: var(--card-bg, #fff) !important;
             display: flex !important;
             flex-direction: column !important;
           }
@@ -2178,7 +2179,7 @@ export default function Dashboard() {
             width: 100% !important;
             height: 100% !important;
             border-left: none !important;
-            background: #fff !important;
+            background: var(--card-bg, #fff) !important;
           }
           .mobile-bottom-bar {
             display: flex;
@@ -2189,7 +2190,7 @@ export default function Dashboard() {
             left: 0;
             right: 0;
             height: 56px;
-            background: rgba(255, 255, 255, 0.96);
+            background: var(--card-bg, rgba(255, 255, 255, 0.96));
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-top: 1px solid var(--border);

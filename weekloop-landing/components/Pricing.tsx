@@ -87,7 +87,7 @@ export default function Pricing() {
                 border: plan.highlight
                   ? "2px solid var(--accent)"
                   : "1px solid var(--border)",
-                background: plan.highlight ? "#fff" : "var(--bg-alt)",
+                background: plan.highlight ? "var(--card-bg, #fff)" : "var(--bg-alt)",
                 padding: "2rem",
                 display: "flex",
                 flexDirection: "column",

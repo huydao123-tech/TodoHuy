@@ -168,9 +168,9 @@ export default function TaskDetailModal({
                   fontWeight: 650,
                   padding: "0.15rem 0.45rem",
                   borderRadius: "var(--radius-pill)",
-                  background: "#F5F5F4",
-                  color: "#78716C",
-                  border: "1px solid #E7E5E4",
+                  background: "var(--border)",
+                  color: "var(--text-muted)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 {isVietnamese ? "Tuần cũ (Chỉ xem)" : "Past week (Read only)"}
@@ -205,7 +205,7 @@ export default function TaskDetailModal({
                     className={`task-status-btn ${isActive ? "active" : ""}`}
                     style={{
                       borderColor: isActive ? opt.color : "var(--border)",
-                      backgroundColor: isActive ? opt.bg : "#fff",
+                      backgroundColor: isActive ? opt.bg : "var(--card-bg, #fff)",
                       color: isActive ? opt.color : "var(--text-muted)",
                       fontWeight: isActive ? 600 : 500,
                       cursor: isPast ? "not-allowed" : "pointer",
@@ -236,7 +236,7 @@ export default function TaskDetailModal({
               placeholder={isVietnamese ? "Nhập tên công việc..." : "Enter task name..."}
               className="task-title-input"
               style={{
-                background: isPast ? "var(--bg-alt)" : "#fff",
+                background: isPast ? "var(--bg-alt)" : "var(--input-bg, #fff)",
                 cursor: isPast ? "not-allowed" : "text",
               }}
             />
@@ -422,7 +422,7 @@ export default function TaskDetailModal({
           gap: 0.35rem;
           font-size: 0.75rem;
           color: var(--text-muted);
-          background: #fff;
+          background: var(--card-bg, #fff);
           border: 1px solid var(--border);
           padding: 0.25rem 0.6rem;
           border-radius: var(--radius-pill, 9999px);
@@ -589,7 +589,7 @@ export default function TaskDetailModal({
         }
 
         .task-cancel-btn {
-          background: #fff;
+          background: var(--card-bg, #fff);
           border: 1px solid var(--border);
           color: var(--text-muted);
           font-size: 0.8125rem;

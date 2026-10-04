@@ -106,7 +106,7 @@ export default function HowItWorks() {
                       width: 56,
                       height: 56,
                       borderRadius: "var(--radius-lg)",
-                      background: "#fff",
+                      background: "var(--card-bg, #fff)",
                       border: "1px solid var(--border)",
                       display: "flex",
                       alignItems: "center",

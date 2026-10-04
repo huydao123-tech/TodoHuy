@@ -285,7 +285,7 @@ export default function SidePanel({
             display: "flex",
             alignItems: "center",
             gap: "0.375rem",
-            background: "#fff",
+            background: "var(--card-bg, #fff)",
             border: "1px solid var(--border)",
             borderRadius: "var(--radius)",
             padding: "0.375rem 0.5rem",

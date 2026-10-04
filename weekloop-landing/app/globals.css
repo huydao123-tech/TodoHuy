@@ -2,15 +2,18 @@
 
 /* ─── DESIGN TOKENS ─────────────────────────────────────── */
 :root {
-  /* Palette — light theme locked */
-  --bg:          #FAFAFA;   /* zinc-50 */
-  --bg-alt:      #F4F4F5;   /* zinc-100 */
-  --bg-dark:     #18181B;   /* zinc-900, footer/nav */
-  --text:        #18181B;   /* zinc-900 */
-  --text-muted:  #71717A;   /* zinc-500 */
-  --text-faint:  #A1A1AA;   /* zinc-400 */
-  --border:      #E4E4E7;   /* zinc-200 */
-  --border-mid:  #D4D4D8;   /* zinc-300 */
+  /* Palette — light theme */
+  --bg:               #FAFAFA;   /* zinc-50 */
+  --bg-alt:           #F4F4F5;   /* zinc-100 */
+  --bg-dark:          #18181B;   /* zinc-900, footer/nav */
+  --card-bg:          #FFFFFF;
+  --input-bg:         #FFFFFF;
+  --nav-bg-scrolled:  rgba(250, 250, 250, 0.92);
+  --text:             #18181B;   /* zinc-900 */
+  --text-muted:       #71717A;   /* zinc-500 */
+  --text-faint:       #A1A1AA;   /* zinc-400 */
+  --border:           #E4E4E7;   /* zinc-200 */
+  --border-mid:       #D4D4D8;   /* zinc-300 */
 
   /* Accent — forest green, single accent, locked */
   --accent:      #16A34A;   /* green-600 */
@@ -156,18 +159,21 @@ body {
 
 /* ─── DARK THEME TOKENS ────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg:          #0F172A;   /* slate-900 */
-  --bg-alt:      #1E293B;   /* slate-800 */
-  --bg-dark:     #020617;   /* slate-950 */
-  --text:        #F8FAFC;   /* slate-50 */
-  --text-muted:  #94A3B8;   /* slate-400 */
-  --text-faint:  #64748B;   /* slate-500 */
-  --border:      #334155;   /* slate-700 */
-  --border-mid:  #475569;   /* slate-600 */
+  --bg:               #0F172A;   /* slate-900 */
+  --bg-alt:           #1E293B;   /* slate-800 */
+  --bg-dark:          #020617;   /* slate-950 */
+  --card-bg:          #1E293B;   /* slate-800 */
+  --input-bg:         #0F172A;   /* slate-900 */
+  --nav-bg-scrolled:  rgba(15, 23, 42, 0.92);
+  --text:             #F8FAFC;   /* slate-50 */
+  --text-muted:       #94A3B8;   /* slate-400 */
+  --text-faint:       #64748B;   /* slate-500 */
+  --border:           #334155;   /* slate-700 */
+  --border-mid:       #475569;   /* slate-600 */
 
-  --accent:      #22C55E;   /* green-500 */
-  --accent-dark: #16A34A;   /* green-600 */
-  --accent-bg:   rgba(34, 197, 94, 0.15);
+  --accent:           #22C55E;   /* green-500 */
+  --accent-dark:      #16A34A;   /* green-600 */
+  --accent-bg:        rgba(34, 197, 94, 0.15);
   color-scheme: dark;
 }
 
@@ -176,6 +182,33 @@ body {
   color: var(--text);
 }
 
+[data-theme="dark"] #app-nav {
+  background: var(--bg-alt) !important;
+}
+
 [data-theme="dark"] .bg-white {
-  background-color: var(--bg-alt) !important;
+  background-color: var(--card-bg) !important;
+}
+
+/* Fallback protection for any lingering hardcoded inline white backgrounds in dark mode */
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+[data-theme="dark"] [style*="background-color: #fff"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background-color: white"] {
+  background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] select option {
+  background-color: var(--card-bg);
+  color: var(--text);
 }
