@@ -12,6 +12,7 @@ import {
   FileText,
   CalendarBlank,
   Tag,
+  ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { useLanguage } from "@/lib/languageContext";
 
@@ -28,6 +29,7 @@ export interface TaskDetailModalProps {
     updates: { content: string; note: string; status: WorkItemStatus }
   ) => void;
   onDelete: (taskId: string | number) => void;
+  onMoveToCurrentWeek?: (taskId: string | number) => void;
 }
 
 export default function TaskDetailModal({
@@ -40,6 +42,7 @@ export default function TaskDetailModal({
   isPast = false,
   onSave,
   onDelete,
+  onMoveToCurrentWeek,
 }: TaskDetailModalProps) {
   const { t, isVietnamese } = useLanguage();
   const [content, setContent] = useState("");
@@ -271,18 +274,42 @@ export default function TaskDetailModal({
         {/* Footer */}
         <div className="task-modal-footer">
           {isPast ? (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "0.5rem" }}>
               <span style={{ fontSize: "0.78125rem", color: "var(--text-muted)" }}>
                 {t.readOnlyNotice}
               </span>
-              <button
-                type="button"
-                className="task-cancel-btn"
-                onClick={onClose}
-                style={{ padding: "0.45rem 1.25rem", fontWeight: 600 }}
-              >
-                {t.cancel}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {onMoveToCurrentWeek && task.status !== "DONE" && (
+                  <button
+                    type="button"
+                    className="task-save-btn"
+                    onClick={() => {
+                      onMoveToCurrentWeek(task.id);
+                      onClose();
+                    }}
+                    style={{
+                      background: "var(--accent)",
+                      color: "#fff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      padding: "0.45rem 1rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <ArrowsClockwise size={16} weight="bold" />
+                    <span>{t.moveToCurrentWeek || (isVietnamese ? "Dời sang tuần này" : "Move to this week")}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="task-cancel-btn"
+                  onClick={onClose}
+                  style={{ padding: "0.45rem 1.25rem", fontWeight: 600 }}
+                >
+                  {t.cancel}
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -345,7 +372,7 @@ export default function TaskDetailModal({
         }
 
         .task-modal-container {
-          background: #ffffff;
+          background: var(--bg);
           width: 100%;
           max-width: 580px;
           border-radius: var(--radius-lg, 12px);
@@ -482,7 +509,7 @@ export default function TaskDetailModal({
           border: 1px solid var(--border);
           outline: none;
           color: var(--text);
-          background: #fff;
+          background: var(--bg-alt);
           transition: border-color 0.15s, box-shadow 0.15s;
           box-sizing: border-box;
         }
@@ -500,7 +527,7 @@ export default function TaskDetailModal({
           border: 1px solid var(--border);
           outline: none;
           color: var(--text);
-          background: #fff;
+          background: var(--bg-alt);
           resize: vertical;
           min-height: 140px;
           font-family: inherit;

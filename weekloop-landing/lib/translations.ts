@@ -102,6 +102,10 @@ export interface Translations {
 
   // Task Detail Modal
   taskDetailTitle: string;
+  moveToCurrentWeek: string;
+  theme: string;
+  darkMode: string;
+  lightMode: string;
   taskContentLabel: string;
   taskNoteLabel: string;
   taskStatusLabel: string;
@@ -244,6 +248,10 @@ export const translations: Record<AppLanguage, Translations> = {
 
     // Task Detail Modal
     taskDetailTitle: "Chi tiết công việc",
+    moveToCurrentWeek: "Dời sang tuần này",
+    theme: "Giao diện",
+    darkMode: "Giao diện tối",
+    lightMode: "Giao diện sáng",
     taskContentLabel: "Nội dung việc",
     taskNoteLabel: "Ghi chú & Chi tiết",
     taskStatusLabel: "Trạng thái",
@@ -386,6 +394,10 @@ export const translations: Record<AppLanguage, Translations> = {
 
     // Task Detail Modal
     taskDetailTitle: "Task Details",
+    moveToCurrentWeek: "Move to this week",
+    theme: "Theme",
+    darkMode: "Dark Mode",
+    lightMode: "Light Mode",
     taskContentLabel: "Task content",
     taskNoteLabel: "Notes & Details",
     taskStatusLabel: "Status",

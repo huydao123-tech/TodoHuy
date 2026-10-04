@@ -7,7 +7,7 @@ import {
   getWorkItems,
   getWeekRange,
 } from "@/lib/mockData";
-import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple, FileText } from "@phosphor-icons/react";
+import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple, FileText, ArrowsClockwise } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import TaskDetailModal from "@/components/app/TaskDetailModal";
 import { useLanguage } from "@/lib/languageContext";
@@ -54,6 +54,7 @@ function GoalCard({
   onDeleteItem,
   onCycleStatus,
   onOpenTaskDetail,
+  onMoveTaskToCurrentWeek,
 }: {
   groupId: string | number;
   color: string;
@@ -70,6 +71,7 @@ function GoalCard({
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
+  onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }) {
   const { t, isVietnamese } = useLanguage();
   const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
@@ -377,7 +379,7 @@ function GoalCard({
                       )}
                     </div>
 
-                    {!isPast && (
+                    {!isPast ? (
                       <div
                         className="item-actions"
                         style={{ display: "flex", gap: "0.3rem", opacity: 0, transition: "opacity 0.15s ease" }}
@@ -444,6 +446,37 @@ function GoalCard({
                           <Trash size={12} />
                         </button>
                       </div>
+                    ) : (
+                      item.status !== "DONE" && onMoveTaskToCurrentWeek && (
+                        <div
+                          className="item-actions"
+                          style={{ display: "flex", gap: "0.3rem", opacity: 0.85, transition: "opacity 0.15s ease" }}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveTaskToCurrentWeek(groupId, absoluteOffset, item.id);
+                            }}
+                            style={{
+                              background: "var(--bg-alt)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--radius-pill)",
+                              cursor: "pointer",
+                              color: "var(--accent)",
+                              padding: "0.15rem 0.4rem",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                              fontSize: "0.6875rem",
+                              fontWeight: 600,
+                            }}
+                            title={isVietnamese ? "Dời sang tuần này" : "Move to this week"}
+                          >
+                            <ArrowsClockwise size={12} weight="bold" />
+                            <span>{isVietnamese ? "Tuần này" : "This week"}</span>
+                          </button>
+                        </div>
+                      )
                     )}
                   </div>
                 )}

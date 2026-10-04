@@ -24,6 +24,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+            <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('weekloop-theme');
+                  var pref = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                  document.documentElement.setAttribute('data-theme', pref);
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body>
         <LanguageProvider>{children}</LanguageProvider>
       </body>

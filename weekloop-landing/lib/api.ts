@@ -449,6 +449,8 @@ export const taskGroupApi = {
     const docRef = doc(db, "users", user.uid, "task_groups", String(id));
     await deleteDoc(docRef);
   },
+
+
 };
 
 // ─── NOTE APIs ─────────────────────────────────────────────────────────────
@@ -660,6 +662,15 @@ export const workItemApi = {
     const user = await requireAuthUser();
     const docRef = doc(db, "users", user.uid, "work_items", String(id));
     await deleteDoc(docRef);
+  },
+
+  moveToWeek: async (id: string | number, targetWeekStartDate: string) => {
+    const user = await requireAuthUser();
+    const docRef = doc(db, "users", user.uid, "work_items", String(id));
+    await updateDoc(docRef, {
+      weekStartDate: targetWeekStartDate,
+      updatedAt: serverTimestamp(),
+    });
   },
 };
 

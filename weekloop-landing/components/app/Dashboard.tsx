@@ -30,6 +30,7 @@ import {
 } from "@/lib/api";
 import { useLanguage } from "@/lib/languageContext";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import WeekGrid from "@/components/app/WeekGrid";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
@@ -453,6 +454,44 @@ export default function Dashboard() {
       workItemApi.update(itemId, payload).catch(console.error);
     },
     []
+  );
+
+    const handleMoveTaskToCurrentWeek = useCallback(
+    async (groupId: string | number, fromOffset: number, itemId: string | number) => {
+      const fromKey = `${groupId}:${fromOffset}`;
+      const toKey = `${groupId}:0`;
+      const currentWeekStart = getWeekDateStr(0);
+
+      const itemToMove = (workItemsMap[fromKey] ?? []).find((it) => it.id === itemId);
+      if (!itemToMove) return;
+
+      // Optimistic state update
+      setWorkItemsMap((prev) => ({
+        ...prev,
+        [fromKey]: (prev[fromKey] ?? []).filter((it) => it.id !== itemId),
+        [toKey]: [...(prev[toKey] ?? []), { ...itemToMove, weekStartDate: currentWeekStart }],
+      }));
+
+      try {
+        await workItemApi.moveToWeek(itemId, currentWeekStart);
+        setToast({
+          text: isVietnamese ? `Đã dời "${itemToMove.content}" sang tuần này` : `Moved "${itemToMove.content}" to current week`,
+          actionText: isVietnamese ? "Hoàn tác" : "Undo",
+          onAction: async () => {
+            const oldWeekStart = getWeekDateStr(fromOffset);
+            setWorkItemsMap((prev) => ({
+              ...prev,
+              [toKey]: (prev[toKey] ?? []).filter((it) => it.id !== itemId),
+              [fromKey]: [...(prev[fromKey] ?? []), itemToMove],
+            }));
+            await workItemApi.moveToWeek(itemId, oldWeekStart);
+          },
+        });
+      } catch (err) {
+        console.error("Lỗi dời công việc sang tuần mới:", err);
+      }
+    },
+    [workItemsMap, isVietnamese]
   );
 
   const handleDeleteItem = useCallback((groupId: string | number, offset: number, itemId: string | number) => {

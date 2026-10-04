@@ -152,3 +152,30 @@ body {
 ::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+
+/* ─── DARK THEME TOKENS ────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:          #0F172A;   /* slate-900 */
+  --bg-alt:      #1E293B;   /* slate-800 */
+  --bg-dark:     #020617;   /* slate-950 */
+  --text:        #F8FAFC;   /* slate-50 */
+  --text-muted:  #94A3B8;   /* slate-400 */
+  --text-faint:  #64748B;   /* slate-500 */
+  --border:      #334155;   /* slate-700 */
+  --border-mid:  #475569;   /* slate-600 */
+
+  --accent:      #22C55E;   /* green-500 */
+  --accent-dark: #16A34A;   /* green-600 */
+  --accent-bg:   rgba(34, 197, 94, 0.15);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--bg-alt) !important;
+}
