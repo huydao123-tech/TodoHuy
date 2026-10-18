@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { compareTaskGroups, moveTaskGroup } from "@/lib/taskGroupPriority";
 import Link from "next/link";
 import {
   getNavLabel,
@@ -161,7 +162,9 @@ export default function Dashboard() {
   }, []);
 
   const [viewOffset, setViewOffset] = useState(0);
-  const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
+  const [groups, setTaskGroups] = useState<TaskGroup[]>([]);
+  const taskGroups = useMemo(() => [...groups].sort(compareTaskGroups), [groups]);
+  const [savingPriorityId, setSavingPriorityId] = useState<string | number | null>(null);
   const [archivedGroups, setArchivedGroups] = useState<ArchivedTaskGroup[]>([]);
   const [sideTasks, setSideTasks] = useState<SideTaskData[]>([]);
   const [resources, setResources] = useState<ResourceData[]>([]);
@@ -215,22 +218,9 @@ export default function Dashboard() {
   }, [toast]);
 
   useEffect(() => {
-    const colors = ["#16A34A", "#7C3AED", "#D97706", "#2563EB", "#DC2626", "#0D9488"];
-
     dashboardApi
       .getDashboard()
       .then((data) => {
-        const activeList = (data.taskGroups ?? [])
-          .filter((g) => !g.isArchived)
-          .map((g, idx) => ({
-            id: g.id,
-            name: g.name,
-            color: colors[idx % colors.length],
-          }));
-
-        // Đảm bảo không trùng ID
-        const uniqueGroups = Array.from(new Map(activeList.map((item) => [item.id, item])).values());
-        setTaskGroups(uniqueGroups);
         setSideTasks((data.sideTasks ?? []).filter((t) => !t.isDone));
 
         const gMap: Record<string, string> = {};
@@ -257,7 +247,6 @@ export default function Dashboard() {
         setWorkItemsMap(wMap);
       })
       .catch(() => {
-        setTaskGroups(TASK_GROUPS);
         setSideTasks(INITIAL_SIDE_TASKS.filter((t) => !t.isDone));
 
         const initialGMap: Record<string, string> = {};
@@ -271,22 +260,6 @@ export default function Dashboard() {
         });
         setGoalsMap(initialGMap);
         setWorkItemsMap(initialWMap);
-      });
-
-    taskGroupApi
-      .getTrash()
-      .then((trashList) => {
-        setArchivedGroups(
-          (trashList ?? []).map((g, idx) => ({
-            id: g.id,
-            name: g.name,
-            color: colors[(idx + 3) % colors.length],
-            archivedAt: g.archivedAt,
-          }))
-        );
-      })
-      .catch(() => {
-        setArchivedGroups([]);
       });
 
     resourceApi
@@ -308,6 +281,27 @@ export default function Dashboard() {
   }, []);
 
   // ─── SOFT DELETE & THÙNG RÁC (CHỈ ÁP DỤNG CHO NÚT BÊN SIDEBAR TRÁI) ─────────
+  useEffect(() => {
+    if (authChecking) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    const onError = () => {
+      if (!cancelled) setToast({ text: isVietnamese ? "Không thể đồng bộ nhóm công việc. Vui lòng tải lại trang." : "Could not sync task groups. Please reload." });
+    };
+    taskGroupApi.subscribe((allGroups) => {
+      if (cancelled) return;
+      setTaskGroups(allGroups.filter((g) => !g.isArchived));
+      setArchivedGroups(allGroups.filter((g) => g.isArchived));
+    }, onError).then((stop) => {
+      if (cancelled) stop();
+      else unsubscribe = stop;
+    }).catch(onError);
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [authChecking, isVietnamese]);
+
   const handleSoftDeleteGroup = useCallback((id: string | number, name?: string) => {
     setTaskGroups((prev) => {
       const target = prev.find((g) => g.id === id);
@@ -563,6 +557,22 @@ export default function Dashboard() {
     });
   }, []);
 
+  const handleChangeGroupPriority = async (id: string | number, position: number) => {
+    if (savingPriorityId !== null) return;
+    if (taskGroups.findIndex((g) => g.id === id) === position) return;
+    const reordered = moveTaskGroup(taskGroups, id, position);
+    if (reordered === taskGroups || taskGroups.some((g) => String(g.id).startsWith("temp-"))) return;
+    setSavingPriorityId(id);
+    try {
+      await taskGroupApi.reorder(reordered.map((g) => g.id));
+      setToast({ text: isVietnamese ? "Đã cập nhật độ ưu tiên" : "Priority updated" });
+    } catch {
+      setToast({ text: isVietnamese ? "Không thể lưu độ ưu tiên. Vui lòng thử lại." : "Could not save priority. Please try again." });
+    } finally {
+      setSavingPriorityId(null);
+    }
+  };
+
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
@@ -571,13 +581,14 @@ export default function Dashboard() {
       id: tempId,
       name: newGroupName.trim(),
       color: newGroupColor,
+      displayOrder: Math.max(0, ...taskGroups.map((g) => g.displayOrder ?? 0)) + 1,
     };
     setTaskGroups((prev) => [...prev, newGroup]);
     setNewGroupName("");
     setShowAddGroupModal(false);
 
     try {
-      const created = await taskGroupApi.create(newGroup.name, "MAIN", 0, newGroupColor);
+      const created = await taskGroupApi.create(newGroup.name, "MAIN", newGroup.displayOrder, newGroupColor);
       setTaskGroups((prev) =>
         prev.map((g) => (g.id === tempId ? { ...g, id: created.id } : g))
       );
@@ -1067,8 +1078,10 @@ export default function Dashboard() {
                       }}
                     />
                   ) : (
+                    <div style={{ minWidth: 0, flex: 1 }}>
                     <span
                       style={{
+                        display: "block",
                         fontSize: "0.8125rem",
                         color: "var(--text)",
                         letterSpacing: "-0.01em",
@@ -1079,6 +1092,33 @@ export default function Dashboard() {
                     >
                       {g.name}
                     </span>
+                    <select
+                      aria-label={isVietnamese ? `Độ ưu tiên của ${g.name}` : `Priority for ${g.name}`}
+                      value={taskGroups.findIndex((group) => group.id === g.id)}
+                      disabled={savingPriorityId !== null || taskGroups.some((group) => String(group.id).startsWith("temp-"))}
+                      onChange={(e) => void handleChangeGroupPriority(g.id, Number(e.target.value))}
+                      title={isVietnamese ? "Vị trí 1 là ưu tiên cao nhất. Áp dụng cho tất cả các tuần." : "Position 1 is the highest priority. Applies to all weeks."}
+                      style={{
+                        display: "block",
+                        maxWidth: "100%",
+                        marginTop: "0.2rem",
+                        padding: "0.15rem 0.2rem",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg)",
+                        color: "var(--text-muted)",
+                        fontSize: "0.6875rem",
+                        fontFamily: "inherit",
+                        cursor: savingPriorityId !== null ? "wait" : "pointer",
+                      }}
+                    >
+                      {taskGroups.map((group, index) => (
+                        <option key={group.id} value={index}>
+                          {isVietnamese ? `Ưu tiên: ${index + 1}` : `Priority: ${index + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                    </div>
                   )}
                 </div>
 

@@ -9,6 +9,7 @@ export interface TaskGroup {
   id: string | number;
   name: string;
   color: string; // mã màu điểm nhấn
+  displayOrder?: number;
 }
 
 export interface WorkItemData {

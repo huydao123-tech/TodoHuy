@@ -21,9 +21,12 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  writeBatch,
+  onSnapshot,
 } from "firebase/firestore";
 import { auth, db, googleProvider } from "./firebase";
 import { getMonday, formatWeekDateStr } from "./mockData";
+import { compareTaskGroups } from "./taskGroupPriority";
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -271,7 +274,7 @@ export const dashboardApi = {
           isArchived: (data.isArchived as boolean) || false,
         };
       })
-      .sort((a, b) => a.displayOrder - b.displayOrder);
+      .sort(compareTaskGroups);
 
     // 2. Weekly Goals
     const wgRef = collection(db, "users", uid, "weekly_goals");
@@ -349,6 +352,24 @@ export interface TaskGroupData {
 }
 
 export const taskGroupApi = {
+  subscribe: async (onChange: (groups: TaskGroupData[]) => void, onError: (error: Error) => void) => {
+    const user = await requireAuthUser();
+    return onSnapshot(collection(db, "users", user.uid, "task_groups"), (snapshot) => {
+      onChange(snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: data.name || "",
+          type: data.type || "MAIN",
+          color: data.color || "#16A34A",
+          displayOrder: data.displayOrder ?? 0,
+          isArchived: data.isArchived || false,
+          archivedAt: data.archivedAt instanceof Timestamp ? data.archivedAt.toDate().toISOString() : null,
+        };
+      }).sort(compareTaskGroups));
+    }, onError);
+  },
+
   getAll: async (type?: "MAIN" | "SIDE"): Promise<TaskGroupData[]> => {
     const user = await requireAuthUser();
     const tgRef = collection(db, "users", user.uid, "task_groups");
@@ -366,7 +387,7 @@ export const taskGroupApi = {
     }).filter((g) => !g.isArchived);
 
     if (type) items = items.filter((g) => g.type === type);
-    return items.sort((a, b) => a.displayOrder - b.displayOrder);
+    return items.sort(compareTaskGroups);
   },
 
   create: async (name: string, type: "MAIN" | "SIDE" = "MAIN", displayOrder: number = 0, color: string = "#16A34A") => {
@@ -382,6 +403,19 @@ export const taskGroupApi = {
       updatedAt: serverTimestamp(),
     });
     return { id: docRef.id, name, type, color, displayOrder, isArchived: false };
+  },
+
+  reorder: async (ids: (string | number)[]) => {
+    if (ids.length === 0) return;
+    const user = await requireAuthUser();
+    const batch = writeBatch(db);
+    ids.forEach((id, index) => {
+      batch.update(doc(db, "users", user.uid, "task_groups", String(id)), {
+        displayOrder: index + 1,
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await batch.commit();
   },
 
   update: async (id: string | number, name: string) => {
