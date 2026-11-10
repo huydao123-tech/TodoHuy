@@ -526,6 +526,35 @@ textarea.g-input {
   resize: vertical;
 }
 
+.g-input.compact {
+  width: auto;
+  height: 36px;
+  border-radius: var(--radius);
+}
+
+.g-inline-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.g-inline-field > span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.g-nav-row em {
+  flex: none;
+  width: 1.25rem;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .g-input::placeholder {
   color: var(--text-faint);
 }

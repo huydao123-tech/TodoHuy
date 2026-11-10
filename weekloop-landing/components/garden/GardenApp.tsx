@@ -10,17 +10,18 @@ import {
   noteApi,
   resourceApi,
   sideTaskApi,
+  taskGroupApi,
   workItemApi,
   type NoteData,
   type ResourceApiData,
 } from "@/lib/api";
 import { formatWeekDateStr, getMonday } from "@/lib/mockData";
+import { compareTaskGroups, moveTaskGroup } from "@/lib/taskGroupPriority";
 import {
   cycleStatus,
   moodFor,
   staffFor,
   shiftWeek,
-  speciesForGroup,
   visibleGroups,
   weekCounts,
   weekLabel,
@@ -45,7 +46,6 @@ type Panel =
   | { kind: "resources" };
 
 interface Toast {
-  key: number;
   text: string;
   undo?: () => void;
 }
@@ -137,6 +137,7 @@ export default function GardenApp() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [hover, setHover] = useState<ScenePick | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [savingPriority, setSavingPriority] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -196,7 +197,6 @@ export default function GardenApp() {
           id: group.id,
           name: group.name,
           color: group.color,
-          species: speciesForGroup(group.name),
           archived: group.isArchived,
           mood: moodFor(items),
           staff: staffFor(items),
@@ -309,7 +309,7 @@ export default function GardenApp() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const flash = (text: string, undo?: () => void) => setToast({ key: Date.now(), text, undo });
+  const flash = (text: string, undo?: () => void) => setToast({ text, undo });
 
   /** Runs the Firestore write unless this is the preview. Returns false and shows the message when it fails. */
   async function remote<T>(write: () => Promise<T>, failed: string): Promise<T | false> {
@@ -377,6 +377,28 @@ export default function GardenApp() {
       patchWork(item.id, { weekStartDate: item.weekStartDate });
       void remote(() => workItemApi.moveToWeek(item.id, item.weekStartDate), "Không hoàn tác được.");
     });
+  }
+
+  // ─── Độ ưu tiên của phòng ban ───────────────────────────────────────────
+  // Same rule as the dashboard: priority is the position among active groups, stored as displayOrder.
+  const activeGroups = useMemo(
+    () => groups.filter((group) => !group.isArchived).sort(compareTaskGroups),
+    [groups]
+  );
+
+  async function changePriority(id: string, position: number) {
+    if (savingPriority) return;
+    const reordered = moveTaskGroup(activeGroups, id, position);
+    if (reordered === activeGroups) return;
+    const previous = groups;
+    const archived = groups.filter((group) => group.isArchived).sort(compareTaskGroups);
+    const order = new Map([...reordered, ...archived].map((group, index) => [group.id, index + 1]));
+    setGroups((list) => list.map((group) => ({ ...group, displayOrder: order.get(group.id) ?? group.displayOrder })));
+    setSavingPriority(true);
+    const ok = await remote(() => taskGroupApi.reorder([...order.keys()]), "Không lưu được độ ưu tiên.");
+    setSavingPriority(false);
+    if (ok === false) setGroups(previous);
+    else flash("Đã cập nhật độ ưu tiên");
   }
 
   // ─── Việc phụ ───────────────────────────────────────────────────────────
@@ -491,9 +513,10 @@ export default function GardenApp() {
 
   const roomList = (
     <ul className="g-list">
-      {rooms.map((room) => (
+      {rooms.map((room, index) => (
         <li key={room.id}>
           <button type="button" className="g-nav-row" aria-current={selected === room.id || undefined} onClick={() => openRoom(room.id)}>
+            <em aria-hidden>{room.archived ? "" : index + 1}</em>
             <i style={{ background: room.archived ? "var(--text-faint)" : room.color }} aria-hidden />
             <span>{room.name}</span>
             <b>
@@ -538,7 +561,7 @@ export default function GardenApp() {
       </header>
 
       <aside className="g-sidebar" aria-label="Phòng ban">
-        <h2 className="g-label">Phòng ban</h2>
+        <h2 className="g-label">Phòng ban, theo độ ưu tiên</h2>
         {rooms.length === 0 && ready ? <p className="g-empty">Chưa có đầu việc nào.</p> : roomList}
         <dl className="g-legend">
           <div>
@@ -550,7 +573,7 @@ export default function GardenApp() {
             <dd>việc chưa làm</dd>
           </div>
           <div>
-            <dt>Nằm nghỉ</dt>
+            <dt>Gục nghỉ</dt>
             <dd>việc đã xong</dd>
           </div>
         </dl>
@@ -579,7 +602,7 @@ export default function GardenApp() {
           </div>
         )}
         {toast && (
-          <div className="g-toast" role="status" key={toast.key}>
+          <div className="g-toast" role="status">
             <span>{toast.text}</span>
             {toast.undo && (
               <button
@@ -612,6 +635,12 @@ export default function GardenApp() {
             <RoomPanel
               key={current.id}
               room={current}
+              priority={{
+                position: activeGroups.findIndex((group) => group.id === current.id),
+                count: activeGroups.length,
+                saving: savingPriority,
+                onChange: (position) => void changePriority(current.id, position),
+              }}
               tasks={weekWorks(works, week, current.id)}
               resources={resources.filter((item) => item.taskGroupId === current.id)}
               onCycle={changeStatus}

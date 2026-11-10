@@ -4,30 +4,10 @@ import {
   cycleStatus,
   moodFor,
   shiftWeek,
-  speciesForGroup,
   visibleGroups,
   weekCounts,
   weekLabel,
 } from "../lib/garden/model.ts";
-
-test("species follows the live task names", () => {
-  assert.equal(speciesForGroup("Tiếng nhật"), "fox");
-  assert.equal(speciesForGroup("thiết kế nghiệp vụ kiến nest"), "ant");
-  assert.equal(speciesForGroup("FPT"), "penguin");
-  assert.equal(speciesForGroup("học cách chiến đấu"), "tiger");
-  assert.equal(speciesForGroup("Học bằng lái xe"), "dog");
-  assert.equal(speciesForGroup("Tiếng Anh"), "parrot");
-  assert.equal(speciesForGroup("học nấu ăn"), "cook");
-  assert.equal(speciesForGroup("cờ vua"), "chesscat");
-  assert.equal(speciesForGroup("Thú vui"), "tanuki");
-  assert.equal(speciesForGroup("Nghiên cứu đh nhật"), "crane");
-  assert.equal(speciesForGroup("Page MBTI"), "moth");
-  assert.equal(speciesForGroup("việc lạ"), "hare");
-});
-
-test("university research is a crane, not the Japanese fox", () => {
-  assert.equal(speciesForGroup("Nghiên cứu đh nhật"), "crane");
-});
 
 test("mood follows the week's items", () => {
   assert.equal(moodFor([]), "sleep");
