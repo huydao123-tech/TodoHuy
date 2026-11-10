@@ -1,0 +1,701 @@
+.garden {
+  position: fixed;
+  inset: 0;
+  background: #101614;
+  color: #f3f0e7;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.garden canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.garden-top,
+.garden-dock,
+.garden-panel,
+.garden-tip,
+.garden-fallback {
+  position: absolute;
+  z-index: 2;
+}
+
+.garden-top {
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 32px);
+}
+
+.garden-week,
+.garden-chip,
+.garden-icon {
+  background: #17211d;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  border-radius: 999px;
+}
+
+.garden-week {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.garden-week strong {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  padding: 0 8px;
+  min-width: 9.5rem;
+  text-align: center;
+}
+
+.garden-icon,
+.garden-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.garden-icon {
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+}
+
+.garden-chip em {
+  font-style: normal;
+  color: #e2a15a;
+}
+
+.garden-chip .done {
+  color: #8fbf7a;
+}
+
+.garden-dock {
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 32px));
+}
+
+.garden-hint,
+.garden-banner {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #d5ddd8;
+}
+
+.garden-hint {
+  background: #17211d;
+  border: 1px solid #31423b;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.garden-banner {
+  background: #2a2116;
+  color: #f0d7b0;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.garden-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.garden-dots button {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #101614;
+  padding: 0;
+  cursor: pointer;
+}
+
+.garden-dots button[aria-pressed="true"] {
+  outline: 2px solid #f3f0e7;
+}
+
+.garden-panel {
+  top: 16px;
+  right: 16px;
+  width: min(380px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  background: #141c19;
+  border: 1px solid #2c3b34;
+  border-radius: 16px;
+  padding: 16px 16px 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.garden-kicker {
+  margin: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e2a15a;
+}
+
+.garden-panel h2 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.garden-sub {
+  margin: 6px 0 12px;
+  color: #aeb8b1;
+  font-size: 0.84rem;
+}
+
+.garden-task,
+.garden-note,
+.garden-side {
+  width: 100%;
+  text-align: left;
+  background: #1c2722;
+  color: inherit;
+  border: 1px solid #31423b;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.garden-task {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.garden-status {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 3px 6px;
+  background: #2a3330;
+  color: #d5dbd6;
+}
+
+.garden-status.doing {
+  background: #3a2a16;
+  color: #f0c48a;
+}
+
+.garden-status.done {
+  background: #1d3324;
+  color: #b7d7ae;
+}
+
+.garden-task p,
+.garden-note p,
+.garden-side p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.garden-task small,
+.garden-note small {
+  display: block;
+  margin-top: 4px;
+  color: #9aa59e;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.garden-add,
+.garden-note-edit {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.garden-add input,
+.garden-note-edit textarea,
+.garden-note-edit input {
+  width: 100%;
+  background: #101614;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.garden-note-edit {
+  flex-direction: column;
+}
+
+.garden-add button,
+.garden-note-edit button,
+.garden-text-btn {
+  background: #e2a15a;
+  color: #24180d;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.garden-text-btn.quiet {
+  background: transparent;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+}
+
+.garden-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.garden-links a {
+  color: #d7e4dc;
+  font-size: 0.82rem;
+}
+
+.garden-error {
+  color: #ffb4b4;
+  font-size: 0.78rem;
+}
+
+.garden-tip {
+  transform: translate(-50%, -130%);
+  pointer-events: none;
+  background: #17211d;
+  border: 1px solid #31423b;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.garden-fallback {
+  inset: 72px 16px 88px 16px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.garden-fallback button {
+  text-align: left;
+  background: #17211d;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.garden-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  background: #101614;
+}
+
+/* ─── Dock: three places, same order as the corner of the yard ─────────── */
+.garden-places {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.garden-places button,
+.garden-tabs button,
+.garden-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  background: #17211d;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.garden-places button span,
+.garden-tabs button span,
+.garden-section-head span {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: #9aa59e;
+}
+
+.garden-places button[aria-pressed="true"],
+.garden-tabs button[aria-selected="true"],
+.garden-filter button[aria-pressed="true"] {
+  background: #e2a15a;
+  border-color: #e2a15a;
+  color: #24180d;
+}
+
+.garden-places button[aria-pressed="true"] span,
+.garden-tabs button[aria-selected="true"] span {
+  color: #5a3d1c;
+}
+
+.garden-places .help {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ─── Panel pieces shared by all four panels ───────────────────────────── */
+.garden-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: transparent;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.garden-panel h2 {
+  padding-right: 36px;
+}
+
+.garden-tabs,
+.garden-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.garden-filter {
+  margin-top: 8px;
+}
+
+.garden-filter button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.74rem;
+}
+
+.garden-empty {
+  margin: 0 0 10px;
+  color: #9aa59e;
+  font-size: 0.84rem;
+}
+
+.garden-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #1c2722;
+  border: 1px solid #31423b;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.garden-row.hot {
+  border-color: #e2a15a;
+}
+
+.garden-row-body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.garden-row-body.static {
+  cursor: default;
+}
+
+.garden-row-body p,
+.garden-row-body a {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: #f3f0e7;
+  overflow-wrap: anywhere;
+}
+
+.garden-row-body p.struck {
+  color: #8d988f;
+  text-decoration: line-through;
+}
+
+.garden-row-body small {
+  display: block;
+  margin-top: 3px;
+  color: #9aa59e;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+button.garden-status {
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.garden-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 6px;
+  border: 1.5px solid #6f8278;
+  background: transparent;
+  cursor: pointer;
+}
+
+.garden-check:hover {
+  background: #8fbf7a;
+  border-color: #8fbf7a;
+}
+
+.garden-x {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: #9aa59e;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.garden-x:hover {
+  background: #3a2020;
+  color: #ffb4b4;
+}
+
+.garden-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #1c2722;
+  border: 1px solid #e2a15a;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.garden-edit.bare {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.garden-row + .garden-edit:not(.bare),
+.garden-empty + .garden-edit:not(.bare),
+.garden-section + .garden-edit:not(.bare) {
+  border-color: #31423b;
+  border-style: dashed;
+  background: transparent;
+  margin-top: 12px;
+}
+
+.garden-edit input,
+.garden-edit textarea,
+.garden-edit select {
+  width: 100%;
+  background: #101614;
+  color: #f3f0e7;
+  border: 1px solid #31423b;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.garden-edit textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.garden-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.garden-actions .spacer {
+  flex: 1;
+}
+
+.garden-text-btn:disabled {
+  background: #2a3330;
+  color: #9aa59e;
+  cursor: default;
+}
+
+.garden-link-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  padding: 4px 2px;
+  color: #d7e4dc;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.garden-link-btn.danger {
+  color: #ffb4b4;
+}
+
+.garden-section {
+  margin-bottom: 14px;
+}
+
+.garden-section-head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #e2a15a;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+button.garden-section-head {
+  cursor: pointer;
+}
+
+.garden-note small.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.garden-note small.tag {
+  color: #e2a15a;
+}
+
+.garden input:focus-visible,
+.garden textarea:focus-visible,
+.garden select:focus-visible,
+.garden button:focus-visible,
+.garden a:focus-visible {
+  outline: 2px solid #e2a15a;
+  outline-offset: 2px;
+}
+
+.garden-toast {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  background: #f3f0e7;
+  color: #1a211e;
+  border-radius: 999px;
+  padding: 8px 8px 8px 16px;
+  font-size: 0.82rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.garden-toast span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.garden-toast button {
+  flex: none;
+  background: #1a211e;
+  color: #f3f0e7;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .garden-panel {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-height: 62vh;
+    border-radius: 18px 18px 0 0;
+    z-index: 3;
+  }
+
+  .garden-dock {
+    bottom: 16px;
+  }
+
+  .garden-toast {
+    top: 64px;
+    bottom: auto;
+  }
+}
