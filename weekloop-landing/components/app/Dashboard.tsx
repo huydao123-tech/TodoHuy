@@ -47,6 +47,7 @@ import {
   Plus,
   ArrowSquareOut,
   SignOut,
+  PawPrint,
   Trash,
   Notebook,
   PencilSimple,
@@ -886,7 +887,22 @@ export default function Dashboard() {
             </button>
           )}
 
-          {/* Nút chuyển đổi ngôn ngữ */}
+          <Link
+            href="/garden"
+            id="open-garden"
+            title="Khu vườn"
+            aria-label="Mở khu vườn việc"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              color: "var(--text-muted)",
+              padding: "0.35rem",
+              borderRadius: "var(--radius)",
+              textDecoration: "none",
+            }}
+          >
+            <PawPrint size={16} />
+          </Link>
           <ThemeToggle size="sm" />
           <LanguageToggle size="sm" />
 

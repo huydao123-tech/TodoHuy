@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="vi" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
             <head>
         <script
           dangerouslySetInnerHTML={{

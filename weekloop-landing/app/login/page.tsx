@@ -10,6 +10,13 @@ import { useLanguage } from "@/lib/languageContext";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 
+function afterLoginPath(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return "/dashboard";
+  return raw;
+}
+
 export default function LoginPage() {
   const { t, isVietnamese } = useLanguage();
 
@@ -36,7 +43,7 @@ export default function LoginPage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         // Đã có phiên đăng nhập hợp lệ -> chuyển thẳng vào Dashboard
-        window.location.replace("/dashboard");
+        window.location.replace(afterLoginPath());
       } else {
         setCheckingSession(false);
       }
@@ -112,7 +119,7 @@ export default function LoginPage() {
           email: data.email,
         })
       );
-      window.location.replace("/dashboard");
+      window.location.replace(afterLoginPath());
       return;
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -136,7 +143,7 @@ export default function LoginPage() {
           email: data.email,
         })
       );
-      window.location.replace("/dashboard");
+      window.location.replace(afterLoginPath());
     } catch (error: any) {
       console.error("Google sign in error:", error);
       setErrorMsg(translateFirebaseError(error));
