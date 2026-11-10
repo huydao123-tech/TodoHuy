@@ -108,3 +108,13 @@ test("resources group by yard order with loose ones last", async () => {
   assert.equal(normalizeLink("tủ sách ở nhà"), "tủ sách ở nhà");
   assert.equal(isWebLink("javascript:alert(1)"), false);
 });
+
+test("staff are the week's tasks, busiest first, three at most", async () => {
+  const { staffFor } = await import("../lib/garden/model.ts");
+  assert.deepEqual(staffFor([]), ["sleep"]);
+  assert.deepEqual(staffFor([{ status: "DONE" }, { status: "TODO" }, { status: "IN_PROGRESS" }]), ["work", "wait", "sleep"]);
+  assert.deepEqual(
+    staffFor([{ status: "TODO" }, { status: "TODO" }, { status: "TODO" }, { status: "IN_PROGRESS" }]),
+    ["work", "wait", "wait"]
+  );
+});

@@ -74,6 +74,16 @@ export function moodFor(items: { status: string }[]): Mood {
   return "wait";
 }
 
+/** Up to three employees per department: in-progress tasks walk around, untouched ones wait, done ones rest. */
+export function staffFor(items: { status: string }[]): Mood[] {
+  const rank = (status: string) => (status === "IN_PROGRESS" ? 0 : status === "TODO" ? 1 : 2);
+  const moods = [...items]
+    .sort((a, b) => rank(a.status) - rank(b.status))
+    .slice(0, 3)
+    .map((item): Mood => (item.status === "IN_PROGRESS" ? "work" : item.status === "TODO" ? "wait" : "sleep"));
+  return moods.length ? moods : ["sleep"];
+}
+
 function byOrder(a: GardenGroup, b: GardenGroup): number {
   return a.displayOrder - b.displayOrder || a.name.localeCompare(b.name, "vi");
 }

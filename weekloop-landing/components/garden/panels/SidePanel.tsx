@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "@phosphor-icons/react";
 
 export interface SideItem {
   id: string;
@@ -19,26 +20,10 @@ export default function SidePanel({ sides, highlightId, onAdd, onFinish }: Props
   const [draft, setDraft] = useState("");
   return (
     <>
-      <p className="garden-kicker">Hàng rào</p>
-      <h2>Việc phụ</h2>
-      <p className="garden-sub">Mỗi việc phụ là một con chim. Tick xong thì chim bay, việc được gỡ khỏi danh sách.</p>
-      {sides.length === 0 && <p className="garden-empty">Hàng rào đang trống.</p>}
-      {sides.map((side) => (
-        <div key={side.id} className={`garden-row ${side.id === highlightId ? "hot" : ""}`}>
-          <button
-            type="button"
-            className="garden-check"
-            aria-label={`Xong: ${side.name}`}
-            title="Xong, gỡ khỏi danh sách"
-            onClick={() => onFinish(side)}
-          />
-          <div className="garden-row-body static">
-            <p>{side.name}</p>
-          </div>
-        </div>
-      ))}
+      <h2 className="g-title">Việc phụ</h2>
+      <p className="g-sub">Việc lặt vặt không thuộc phòng ban nào. Tick xong thì việc được gỡ khỏi bảng ghim.</p>
       <form
-        className="garden-add"
+        className="g-add"
         onSubmit={(event) => {
           event.preventDefault();
           const name = draft.trim();
@@ -47,9 +32,24 @@ export default function SidePanel({ sides, highlightId, onAdd, onFinish }: Props
           setDraft("");
         }}
       >
-        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Thêm việc phụ" aria-label="Thêm việc phụ" />
-        <button type="submit">Thêm</button>
+        <input className="g-input" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Thêm việc phụ" aria-label="Thêm việc phụ" />
+        <button type="submit" className="g-btn form">
+          Thêm
+        </button>
       </form>
+      {sides.length === 0 && <p className="g-empty">Không còn việc phụ nào.</p>}
+      <ul className="g-list">
+        {sides.map((side) => (
+          <li key={side.id} className={side.id === highlightId ? "g-row current" : "g-row"}>
+            <button type="button" className="g-check" aria-label={`Xong: ${side.name}`} title="Đánh dấu xong" onClick={() => onFinish(side)}>
+              <Check size={12} weight="bold" aria-hidden />
+            </button>
+            <div className="g-row-main">
+              <span className="g-row-title">{side.name}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

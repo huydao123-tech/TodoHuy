@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowLeft, Plus, Trash } from "@phosphor-icons/react";
 import type { NoteData } from "@/lib/api";
 import { NOTE_CATEGORIES, filterNotes, parseNoteColor, withNoteCategory } from "@/lib/garden/model";
 
@@ -33,15 +34,15 @@ export default function NotesPanel({ notes, openId, onOpen, onCreate, onSave, on
   const shown = filterNotes(notes, query, category);
   return (
     <>
-      <p className="garden-kicker">Sổ tay</p>
-      <h2>Ghi chú</h2>
-      <div className="garden-add">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm ghi chú" aria-label="Tìm ghi chú" />
-        <button type="button" onClick={onCreate}>
+      <h2 className="g-title">Ghi chú</h2>
+      <div className="g-add">
+        <input className="g-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm trong ghi chú" aria-label="Tìm trong ghi chú" />
+        <button type="button" className="g-btn form primary" onClick={onCreate}>
+          <Plus size={16} aria-hidden />
           Viết mới
         </button>
       </div>
-      <div className="garden-filter" aria-label="Lọc theo loại">
+      <div className="g-chips" aria-label="Lọc theo loại">
         <button type="button" aria-pressed={category === null} onClick={() => setCategory(null)}>
           Tất cả
         </button>
@@ -52,20 +53,25 @@ export default function NotesPanel({ notes, openId, onOpen, onCreate, onSave, on
         ))}
       </div>
       {shown.length === 0 && (
-        <p className="garden-empty">{notes.length === 0 ? "Sổ tay còn trống." : "Không có ghi chú nào khớp."}</p>
+        <p className="g-empty">
+          {notes.length === 0 ? "Chưa có ghi chú nào. Bấm Viết mới để bắt đầu." : "Không có ghi chú nào khớp với bộ lọc."}
+        </p>
       )}
-      {shown.map((note) => {
-        const meta = parseNoteColor(note.color);
-        return (
-          <button key={note.id} className="garden-note" type="button" onClick={() => onOpen(note.id)}>
-            <p>
-              {meta.icon} {note.title || "Không tiêu đề"}
-            </p>
-            {note.content ? <small className="clamp">{note.content}</small> : null}
-            <small className="tag">{meta.category}</small>
-          </button>
-        );
-      })}
+      <ul className="g-list">
+        {shown.map((note) => {
+          const meta = parseNoteColor(note.color);
+          return (
+            <li key={note.id} className="g-row">
+              <button className="g-row-main" type="button" onClick={() => onOpen(note.id)}>
+                <span className="g-row-title">
+                  {meta.icon} {note.title || "Không tiêu đề"}
+                </span>
+                <span className="g-row-meta clamp">{[meta.category, note.content].filter(Boolean).join(" · ")}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </>
   );
 }
@@ -89,37 +95,44 @@ function NoteEditor({
 
   return (
     <form
-      className="garden-edit bare"
+      className="g-form"
       onSubmit={(event) => {
         event.preventDefault();
         onSave({ title, content, color: withNoteCategory(note.color, category) });
       }}
     >
-      <button type="button" className="garden-link-btn" onClick={onBack}>
-        ‹ Tất cả ghi chú
+      <button type="button" className="g-btn ghost g-back" onClick={onBack}>
+        <ArrowLeft size={16} aria-hidden />
+        Tất cả ghi chú
       </button>
-      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tiêu đề" aria-label="Tiêu đề ghi chú" />
-      <select value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Loại ghi chú">
-        {NOTE_CATEGORIES.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
-      <textarea
-        rows={12}
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        placeholder="Viết ở đây…"
-        aria-label="Nội dung ghi chú"
-      />
-      <div className="garden-actions">
-        <button type="submit" className="garden-text-btn" disabled={!dirty}>
-          {dirty ? "Lưu ghi chú" : "Đã lưu"}
+      <label className="g-field">
+        <span>Tiêu đề</span>
+        <input className="g-input" value={title} onChange={(event) => setTitle(event.target.value)} />
+      </label>
+      <label className="g-field">
+        <span>Loại</span>
+        <select className="g-input" value={category} onChange={(event) => setCategory(event.target.value)}>
+          {NOTE_CATEGORIES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="g-field">
+        <span>Nội dung</span>
+        <textarea className="g-input" rows={12} value={content} onChange={(event) => setContent(event.target.value)} />
+      </label>
+      <div className="g-actions split">
+        <button type="submit" className="g-btn form primary" disabled={!dirty}>
+          Lưu
         </button>
-        <span className="spacer" />
-        <button type="button" className="garden-link-btn danger" onClick={onDelete}>
-          Xoá ghi chú
+        <span className="g-saved" aria-live="polite">
+          {dirty ? "Có thay đổi chưa lưu" : "Đã lưu"}
+        </span>
+        <button type="button" className="g-btn danger" onClick={onDelete}>
+          <Trash size={16} aria-hidden />
+          Xoá
         </button>
       </div>
     </form>

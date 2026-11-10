@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowSquareOut, Trash } from "@phosphor-icons/react";
 import type { ResourceApiData } from "@/lib/api";
 import { groupResources, isWebLink, normalizeLink, type GardenGroup } from "@/lib/garden/model";
 
@@ -12,23 +13,30 @@ export interface ResourceDraft {
 }
 
 export function ResourceRow({ item, onDelete }: { item: ResourceApiData; onDelete: () => void }) {
+  const web = isWebLink(item.link);
+  const meta = [web ? "" : item.link, item.description].filter(Boolean).join(" · ");
+  const body = (
+    <>
+      <span className="g-row-title">
+        {item.title || item.link}
+        {web ? <ArrowSquareOut size={14} aria-hidden /> : null}
+      </span>
+      {meta ? <span className="g-row-meta">{meta}</span> : null}
+    </>
+  );
   return (
-    <div className="garden-row">
-      <div className="garden-row-body static">
-        {isWebLink(item.link) ? (
-          <a href={item.link} target="_blank" rel="noreferrer">
-            {item.title || item.link} ↗
-          </a>
-        ) : (
-          <p>{item.title}</p>
-        )}
-        {!isWebLink(item.link) && item.link ? <small>{item.link}</small> : null}
-        {item.description ? <small>{item.description}</small> : null}
-      </div>
-      <button type="button" className="garden-x" aria-label={`Xoá tài liệu ${item.title}`} title="Xoá" onClick={onDelete}>
-        ×
+    <li className="g-row">
+      {web ? (
+        <a className="g-row-main" href={item.link} target="_blank" rel="noreferrer">
+          {body}
+        </a>
+      ) : (
+        <div className="g-row-main">{body}</div>
+      )}
+      <button type="button" className="g-btn ghost icon g-row-action" aria-label={`Xoá tài liệu ${item.title}`} title="Xoá" onClick={onDelete}>
+        <Trash size={16} aria-hidden />
       </button>
-    </div>
+    </li>
   );
 }
 
@@ -47,7 +55,7 @@ export function ResourceForm({
   const [groupId, setGroupId] = useState("");
   return (
     <form
-      className="garden-edit"
+      className="g-form divided"
       onSubmit={(event) => {
         event.preventDefault();
         if (!title.trim()) return;
@@ -62,26 +70,36 @@ export function ResourceForm({
         setDescription("");
       }}
     >
-      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tên tài liệu *" aria-label="Tên tài liệu" />
-      <input value={link} onChange={(event) => setLink(event.target.value)} placeholder="Đường dẫn (https://…)" aria-label="Đường dẫn" />
-      <input
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-        placeholder="Mô tả ngắn (không bắt buộc)"
-        aria-label="Mô tả"
-      />
+      <h3 className="g-label">Thêm tài liệu</h3>
+      <label className="g-field">
+        <span>
+          Tên <em>*</em>
+        </span>
+        <input className="g-input" value={title} onChange={(event) => setTitle(event.target.value)} required />
+      </label>
+      <label className="g-field">
+        <span>Đường dẫn</span>
+        <input className="g-input" value={link} onChange={(event) => setLink(event.target.value)} placeholder="https://" />
+      </label>
+      <label className="g-field">
+        <span>Mô tả</span>
+        <input className="g-input" value={description} onChange={(event) => setDescription(event.target.value)} />
+      </label>
       {groups && !fixedGroupId && (
-        <select value={groupId} onChange={(event) => setGroupId(event.target.value)} aria-label="Thuộc đầu việc">
-          <option value="">Chung, không thuộc đầu việc nào</option>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
+        <label className="g-field">
+          <span>Phòng ban</span>
+          <select className="g-input" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+            <option value="">Chung, không thuộc phòng nào</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
-      <div className="garden-actions">
-        <button type="submit" className="garden-text-btn">
+      <div className="g-actions">
+        <button type="submit" className="g-btn form primary">
           Thêm tài liệu
         </button>
       </div>
@@ -101,24 +119,25 @@ export default function ResourcesPanel({ resources, groups, onAdd, onDelete, onO
   const sections = groupResources(resources, groups);
   return (
     <>
-      <p className="garden-kicker">Kệ sách</p>
-      <h2>Tài liệu</h2>
-      <p className="garden-sub">Xếp theo đầu việc. Tài liệu của một đầu việc cũng hiện trong căn của nó.</p>
-      {sections.length === 0 && <p className="garden-empty">Chưa có tài liệu nào.</p>}
+      <h2 className="g-title">Tài liệu</h2>
+      <p className="g-sub">Xếp theo phòng ban. Tài liệu của phòng nào cũng hiện trong phòng đó.</p>
+      {sections.length === 0 && <p className="g-empty">Chưa có tài liệu nào. Thêm tài liệu đầu tiên ở form bên dưới.</p>}
       {sections.map((section) => (
-        <section key={section.groupId ?? "loose"} className="garden-section">
+        <section key={section.groupId ?? "loose"} className="g-section">
           {section.groupId ? (
-            <button type="button" className="garden-section-head" onClick={() => onOpenRoom(section.groupId!)}>
-              {section.name} <span>{section.items.length}</span>
+            <button type="button" className="g-label link" onClick={() => onOpenRoom(section.groupId!)}>
+              {section.name} · {section.items.length}
             </button>
           ) : (
-            <p className="garden-section-head">
-              {section.name} <span>{section.items.length}</span>
-            </p>
+            <h3 className="g-label">
+              {section.name} · {section.items.length}
+            </h3>
           )}
-          {section.items.map((item) => (
-            <ResourceRow key={item.id} item={item} onDelete={() => onDelete(item)} />
-          ))}
+          <ul className="g-list">
+            {section.items.map((item) => (
+              <ResourceRow key={item.id} item={item} onDelete={() => onDelete(item)} />
+            ))}
+          </ul>
         </section>
       ))}
       <ResourceForm groups={groups.filter((group) => !group.isArchived)} onAdd={onAdd} />

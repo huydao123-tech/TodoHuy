@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRight, Trash } from "@phosphor-icons/react";
 import type { ResourceApiData } from "@/lib/api";
 import { speciesLabel, type GardenWork, type WorkStatus } from "@/lib/garden/model";
 import type { SceneRoom } from "../GardenScene";
@@ -12,10 +13,10 @@ const STATUS_LABEL: Record<WorkStatus, string> = {
   DONE: "Xong",
 };
 
-const MOOD_LINE = {
-  work: "Đang đi lại, vì tuần này còn việc dở.",
-  wait: "Đang ngồi chờ, vì chưa việc nào được bắt đầu.",
-  sleep: "Đang ngủ. Tuần này trống hoặc đã xong.",
+const STATUS_CLASS: Record<WorkStatus, string> = {
+  TODO: "",
+  IN_PROGRESS: "doing",
+  DONE: "done",
 };
 
 interface Props {
@@ -39,14 +40,16 @@ export default function RoomPanel(props: Props) {
 
   return (
     <>
-      <p className="garden-kicker">
-        {speciesLabel(room.species)}
-        {room.archived ? " · đang cất" : ""}
+      <h2 className="g-title">
+        <i style={{ background: room.archived ? "var(--text-faint)" : room.color }} aria-hidden />
+        {room.name}
+      </h2>
+      <p className="g-sub">
+        Nhân viên: {speciesLabel(room.species)} · Xong {room.done}/{room.total} việc tuần này
+        {room.archived ? " · Đầu việc đang cất" : ""}
       </p>
-      <h2>{room.name}</h2>
-      <p className="garden-sub">{MOOD_LINE[room.mood]}</p>
 
-      <div className="garden-tabs" role="tablist">
+      <div className="g-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "tasks"} onClick={() => setTab("tasks")}>
           Việc tuần <span>{tasks.length}</span>
         </button>
@@ -57,40 +60,8 @@ export default function RoomPanel(props: Props) {
 
       {tab === "tasks" && (
         <>
-          {tasks.length === 0 && <p className="garden-empty">Chưa có việc trong tuần này.</p>}
-          {tasks.map((task) =>
-            openId === task.id ? (
-              <TaskEditor
-                key={task.id}
-                task={task}
-                onClose={() => setOpenId(null)}
-                onSave={(changes) => {
-                  props.onSave(task, changes);
-                  setOpenId(null);
-                }}
-                onDelete={() => props.onDelete(task)}
-                onMoveNext={() => props.onMoveNext(task)}
-              />
-            ) : (
-              <div key={task.id} className="garden-row">
-                <button
-                  type="button"
-                  className={`garden-status ${task.status === "IN_PROGRESS" ? "doing" : task.status === "DONE" ? "done" : ""}`}
-                  title="Bấm để đổi trạng thái"
-                  aria-label={`${STATUS_LABEL[task.status]}. Bấm để đổi trạng thái`}
-                  onClick={() => props.onCycle(task)}
-                >
-                  {STATUS_LABEL[task.status]}
-                </button>
-                <button type="button" className="garden-row-body" onClick={() => setOpenId(task.id)}>
-                  <p className={task.status === "DONE" ? "struck" : ""}>{task.content}</p>
-                  {task.note ? <small>{task.note}</small> : null}
-                </button>
-              </div>
-            )
-          )}
           <form
-            className="garden-add"
+            className="g-add"
             onSubmit={(event) => {
               event.preventDefault();
               const content = draft.trim();
@@ -100,22 +71,62 @@ export default function RoomPanel(props: Props) {
             }}
           >
             <input
+              className="g-input"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Thêm việc trong tuần"
-              aria-label="Thêm việc trong tuần"
+              placeholder="Thêm việc cho tuần này"
+              aria-label="Thêm việc cho tuần này"
             />
-            <button type="submit">Thêm</button>
+            <button type="submit" className="g-btn form">
+              Thêm
+            </button>
           </form>
+          {tasks.length === 0 && <p className="g-empty">Tuần này phòng chưa có việc. Thêm việc đầu tiên ở ô phía trên.</p>}
+          <ul className="g-list">
+            {tasks.map((task) =>
+              openId === task.id ? (
+                <li key={task.id}>
+                  <TaskEditor
+                    task={task}
+                    onClose={() => setOpenId(null)}
+                    onSave={(changes) => {
+                      props.onSave(task, changes);
+                      setOpenId(null);
+                    }}
+                    onDelete={() => props.onDelete(task)}
+                    onMoveNext={() => props.onMoveNext(task)}
+                  />
+                </li>
+              ) : (
+                <li key={task.id} className="g-row">
+                  <button type="button" className="g-row-main" onClick={() => setOpenId(task.id)}>
+                    <span className={task.status === "DONE" ? "g-row-title struck" : "g-row-title"}>{task.content}</span>
+                    {task.note ? <span className="g-row-meta">{task.note}</span> : null}
+                  </button>
+                  <button
+                    type="button"
+                    className={`g-status ${STATUS_CLASS[task.status]}`}
+                    title="Bấm để đổi trạng thái"
+                    aria-label={`${STATUS_LABEL[task.status]}. Bấm để đổi trạng thái`}
+                    onClick={() => props.onCycle(task)}
+                  >
+                    {STATUS_LABEL[task.status]}
+                  </button>
+                </li>
+              )
+            )}
+          </ul>
         </>
       )}
 
       {tab === "resources" && (
         <>
-          {resources.length === 0 && <p className="garden-empty">Đầu việc này chưa có tài liệu.</p>}
-          {resources.map((item) => (
-            <ResourceRow key={item.id} item={item} onDelete={() => props.onDeleteResource(item)} />
-          ))}
+          {resources.length === 0 && <p className="g-empty">Phòng này chưa có tài liệu.</p>}
+          <ul className="g-list">
+            {resources.map((item) => (
+              <ResourceRow key={item.id} item={item} onDelete={() => props.onDeleteResource(item)} />
+            ))}
+          </ul>
           <ResourceForm fixedGroupId={room.id} onAdd={props.onAddResource} />
         </>
       )}
@@ -140,33 +151,36 @@ function TaskEditor({
   const [note, setNote] = useState(task.note);
   return (
     <form
-      className="garden-edit"
+      className="g-form boxed"
       onSubmit={(event) => {
         event.preventDefault();
         if (!content.trim()) return;
         onSave({ content: content.trim(), note });
       }}
     >
-      <input value={content} onChange={(event) => setContent(event.target.value)} aria-label="Tên việc" autoFocus />
-      <textarea
-        rows={3}
-        value={note}
-        onChange={(event) => setNote(event.target.value)}
-        placeholder="Ghi chú cho việc này"
-        aria-label="Ghi chú cho việc này"
-      />
-      <div className="garden-actions">
-        <button type="submit" className="garden-text-btn">
+      <label className="g-field">
+        <span>Tên việc</span>
+        <input className="g-input" value={content} onChange={(event) => setContent(event.target.value)} autoFocus />
+      </label>
+      <label className="g-field">
+        <span>Ghi chú</span>
+        <textarea className="g-input" rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+      </label>
+      <div className="g-actions">
+        <button type="submit" className="g-btn form primary">
           Lưu
         </button>
-        <button type="button" className="garden-text-btn quiet" onClick={onClose}>
-          Thôi
+        <button type="button" className="g-btn form" onClick={onClose}>
+          Huỷ
         </button>
-        <span className="spacer" />
-        <button type="button" className="garden-link-btn" onClick={onMoveNext}>
-          Sang tuần sau
+      </div>
+      <div className="g-actions split">
+        <button type="button" className="g-btn ghost" onClick={onMoveNext}>
+          <ArrowRight size={16} aria-hidden />
+          Chuyển sang tuần sau
         </button>
-        <button type="button" className="garden-link-btn danger" onClick={onDelete}>
+        <button type="button" className="g-btn danger" onClick={onDelete}>
+          <Trash size={16} aria-hidden />
           Xoá
         </button>
       </div>
