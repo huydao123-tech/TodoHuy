@@ -1,12 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { Mood, Species } from "@/lib/garden/model";
+import type { Mood } from "@/lib/garden/model";
 
 export interface SceneRoom {
   id: string;
   name: string;
   color: string;
-  species: Species;
   archived: boolean;
   mood: Mood;
   /** One entry per employee at a desk (1 to 3), from this week's tasks. */
@@ -37,6 +36,8 @@ type Animal = THREE.Group & {
     seat: THREE.Vector3;
     deskYaw: number;
     eyes: THREE.Object3D[];
+    legs: THREE.Group[];
+    arms: THREE.Group[];
     steps: Step[];
     total: number;
   };
@@ -46,7 +47,8 @@ const ROOM_W = 5.6;
 const ROOM_D = 4.8;
 const HALL_D = 6.4;
 const WALK_SPEED = 1.5;
-const WALL = 0xf6f3ec;
+const WALL = 0xf6ecd9;
+const SEAT_DROP = 0.24;
 const NOTE_COLORS = [0xffe27a, 0xffb3c7, 0xa9d8ff, 0xb9ecb0];
 
 function std(color: number, extra?: { emissive?: number; roughness?: number }) {
@@ -73,197 +75,50 @@ function mesh(
   return object;
 }
 
-function addEyes(group: THREE.Group, y: number, z: number, spread: number, scale = 1) {
+const SKIN = [0xf2c9a0, 0xe3b287, 0xc98f62];
+const SHIRT = [0xf3e7d2, 0xe9dcc4, 0xf7efe0];
+
+/** A limb that swings from its top end: the group sits at the joint, the mesh hangs below it. */
+function limb(radius: number, length: number, color: number, x: number, y: number) {
+  const joint = new THREE.Group();
+  joint.position.set(x, y, 0);
+  joint.add(mesh(new THREE.CapsuleGeometry(radius, length - radius * 2, 3, 8), std(color), 0, -length / 2, 0));
+  return joint;
+}
+
+/**
+ * A simple wooden-toy person, facing +z. Hair takes the department colour so staff are easy to place;
+ * `variant` changes skin tone and hair style so desk neighbours do not look cloned.
+ */
+function person(hair: number, variant: number) {
+  const group = new THREE.Group();
+  const skin = SKIN[variant % SKIN.length];
+  const shirt = SHIRT[variant % SHIRT.length];
+  const legs = [limb(0.085, 0.78, 0xcdb894, -0.11, 0.78), limb(0.085, 0.78, 0xcdb894, 0.11, 0.78)];
+  const arms = [limb(0.065, 0.52, shirt, -0.27, 1.27), limb(0.065, 0.52, shirt, 0.27, 1.27)];
+  group.add(...legs, ...arms);
+  group.add(mesh(new THREE.CapsuleGeometry(0.2, 0.3, 4, 10), std(shirt), 0, 1.05, 0));
+  group.add(mesh(new THREE.SphereGeometry(0.2, 14, 12), std(skin), 0, 1.56, 0));
+
+  const hairMat = std(hair, { roughness: 0.85 });
+  const cap = mesh(new THREE.SphereGeometry(0.225, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.56), hairMat, 0, 1.58, -0.015);
+  cap.rotation.x = -0.32;
+  group.add(cap);
+  if (variant % 3 === 1) group.add(mesh(new THREE.SphereGeometry(0.1, 10, 8), hairMat, 0, 1.82, -0.06));
+  if (variant % 3 === 2) group.add(mesh(new THREE.BoxGeometry(0.36, 0.34, 0.12), hairMat, 0, 1.44, -0.17));
+
   const eyes: THREE.Mesh[] = [];
-  const white = std(0xf4f0e6, { roughness: 0.35 });
-  const pupil = std(0x1b1712, { roughness: 0.3 });
+  const dark = std(0x2b2520, { roughness: 0.4 });
   for (const side of [-1, 1]) {
-    const eye = mesh(new THREE.SphereGeometry(0.055 * scale, 10, 8), white, side * spread, y, z);
-    const dot = mesh(
-      new THREE.SphereGeometry(0.026 * scale, 8, 6),
-      pupil,
-      side * spread,
-      y,
-      z + 0.045 * scale
-    );
-    group.add(eye, dot);
+    const eye = mesh(new THREE.SphereGeometry(0.026, 8, 6), dark, side * 0.075, 1.58, 0.187);
+    eye.castShadow = false;
+    group.add(eye);
     eyes.push(eye);
   }
-  return eyes;
+  // Lean and yaw must compose in the person's own frame: turn first, then tip forward.
+  group.rotation.order = "YXZ";
+  return { group, eyes, legs, arms };
 }
-
-function fox(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(0xd5722b);
-  const cream = std(0xf0d7b4);
-  const dark = std(0x6b3318);
-  group.add(mesh(new THREE.BoxGeometry(0.72, 0.42, 1.05), fur, 0, 0.38, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.48, 0.4, 0.48), fur, 0, 0.72, 0.42));
-  group.add(mesh(new THREE.BoxGeometry(0.22, 0.16, 0.28), cream, 0, 0.62, 0.66));
-  group.add(mesh(new THREE.BoxGeometry(0.16, 0.16, 0.55), dark, 0, 0.48, -0.7));
-  const earL = mesh(new THREE.ConeGeometry(0.1, 0.28, 4), fur, -0.16, 1.02, 0.38);
-  const earR = mesh(new THREE.ConeGeometry(0.1, 0.28, 4), fur, 0.16, 1.02, 0.38);
-  group.add(earL, earR);
-  return { group, eyes: addEyes(group, 0.76, 0.66, 0.12) };
-}
-
-function ant(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const body = std(0x2c241c);
-  group.add(mesh(new THREE.SphereGeometry(0.22, 12, 10), body, 0, 0.28, -0.28));
-  group.add(mesh(new THREE.SphereGeometry(0.16, 12, 10), body, 0, 0.34, 0.02));
-  group.add(mesh(new THREE.SphereGeometry(0.18, 12, 10), body, 0, 0.42, 0.28));
-  const antenna = std(0x1a140f);
-  for (const side of [-1, 1]) {
-    const stick = mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.38, 6), antenna, side * 0.08, 0.7, 0.34);
-    stick.rotation.z = side * 0.5;
-    group.add(stick);
-    group.add(mesh(new THREE.SphereGeometry(0.045, 8, 6), antenna, side * 0.2, 0.86, 0.34));
-  }
-  return { group, eyes: addEyes(group, 0.48, 0.4, 0.07, 0.7) };
-}
-
-function penguin(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  group.add(mesh(new THREE.SphereGeometry(0.42, 14, 12), std(0x1e242b), 0, 0.48, 0));
-  group.add(mesh(new THREE.SphereGeometry(0.26, 12, 10), std(0xf7f4ee), 0, 0.4, 0.22));
-  group.add(mesh(new THREE.ConeGeometry(0.08, 0.22, 4), std(0xe07a2f), 0, 0.52, 0.48));
-  group.add(mesh(new THREE.BoxGeometry(0.16, 0.08, 0.28), std(0xf0a04a), -0.12, 0.08, 0.12));
-  group.add(mesh(new THREE.BoxGeometry(0.16, 0.08, 0.28), std(0xf0a04a), 0.12, 0.08, 0.12));
-  return { group, eyes: addEyes(group, 0.62, 0.32, 0.12, 0.85) };
-}
-
-function tiger(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(0xe08a2c);
-  const stripe = std(0x2a211c);
-  group.add(mesh(new THREE.BoxGeometry(0.7, 0.46, 1.15), fur, 0, 0.42, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.08, 0.2, 0.7), stripe, 0, 0.62, -0.05));
-  group.add(mesh(new THREE.BoxGeometry(0.46, 0.4, 0.46), fur, 0, 0.72, 0.48));
-  group.add(mesh(new THREE.BoxGeometry(0.12, 0.28, 0.5), stripe, 0, 0.5, -0.78));
-  for (const side of [-1, 1]) {
-    group.add(mesh(new THREE.ConeGeometry(0.09, 0.2, 4), fur, side * 0.16, 0.98, 0.42));
-  }
-  return { group, eyes: addEyes(group, 0.76, 0.7, 0.12) };
-}
-
-function dog(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(0xc4a574);
-  group.add(mesh(new THREE.BoxGeometry(0.62, 0.4, 0.95), fur, 0, 0.36, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.42, 0.38, 0.42), fur, 0, 0.66, 0.38));
-  for (const side of [-1, 1]) {
-    const ear = mesh(new THREE.BoxGeometry(0.12, 0.28, 0.08), std(0x8c6844), side * 0.2, 0.78, 0.28);
-    ear.rotation.z = side * 0.4;
-    group.add(ear);
-  }
-  group.add(mesh(new THREE.BoxGeometry(0.1, 0.12, 0.28), fur, 0, 0.42, -0.58));
-  return { group, eyes: addEyes(group, 0.7, 0.58, 0.11) };
-}
-
-function parrot(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  group.add(mesh(new THREE.SphereGeometry(0.32, 12, 10), std(0x3aaa6a), 0, 0.48, 0));
-  group.add(mesh(new THREE.ConeGeometry(0.1, 0.28, 4), std(0xf0b429), 0, 0.5, 0.32));
-  const wing = mesh(new THREE.BoxGeometry(0.55, 0.08, 0.28), std(0x1f7a45), 0, 0.5, 0);
-  wing.rotation.z = 0.3;
-  group.add(wing);
-  group.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.22, 6), std(0xe7d7b0), 0, 0.18, 0));
-  return { group, eyes: addEyes(group, 0.58, 0.2, 0.1, 0.8) };
-}
-
-function cook(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const built = cat(0xd9d3cc);
-  const hat = mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.16, 8), std(0xf7f7f5), 0, 1.05, 0.05);
-  built.group.add(hat);
-  return built;
-}
-
-function chesscat(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const built = cat(0x2e3138);
-  built.group.add(mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.22, 8), std(0xf4f1ea), 0.34, 0.2, 0.2));
-  built.group.add(mesh(new THREE.SphereGeometry(0.09, 10, 8), std(0xf4f1ea), 0.34, 0.36, 0.2));
-  return built;
-}
-
-function cat(color: number): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(color);
-  group.add(mesh(new THREE.BoxGeometry(0.62, 0.36, 0.95), fur, 0, 0.34, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.4, 0.34, 0.4), fur, 0, 0.64, 0.36));
-  for (const side of [-1, 1]) {
-    group.add(mesh(new THREE.ConeGeometry(0.08, 0.2, 4), fur, side * 0.12, 0.9, 0.32));
-  }
-  group.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 5), fur, 0.2, 0.48, -0.55));
-  return { group, eyes: addEyes(group, 0.68, 0.56, 0.1) };
-}
-
-function tanuki(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(0x8d5a32);
-  group.add(mesh(new THREE.SphereGeometry(0.4, 14, 12), fur, 0, 0.42, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.46, 0.22, 0.16), std(0x2a211c), 0, 0.52, 0.32));
-  group.add(mesh(new THREE.BoxGeometry(0.16, 0.18, 0.4), fur, 0, 0.36, -0.48));
-  return { group, eyes: addEyes(group, 0.58, 0.28, 0.12) };
-}
-
-function crane(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const paper = std(0xf4f7fb);
-  group.add(mesh(new THREE.SphereGeometry(0.28, 12, 10), paper, 0, 0.7, 0));
-  const neck = mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.55, 6), paper, 0, 1.05, 0.12);
-  neck.rotation.x = 0.4;
-  group.add(neck);
-  group.add(mesh(new THREE.BoxGeometry(0.08, 0.06, 0.32), std(0xe2b15a), 0, 1.28, 0.32));
-  group.add(mesh(new THREE.BoxGeometry(0.08, 0.45, 0.08), std(0xd7c3a2), -0.08, 0.25, 0));
-  group.add(mesh(new THREE.BoxGeometry(0.08, 0.45, 0.08), std(0xd7c3a2), 0.08, 0.25, 0));
-  return { group, eyes: addEyes(group, 1.22, 0.22, 0.07, 0.65) };
-}
-
-function moth(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  group.add(mesh(new THREE.CapsuleGeometry(0.1, 0.28, 4, 8), std(0x6d5a3a), 0, 0.45, 0));
-  const wingMat = new THREE.MeshStandardMaterial({
-    color: 0xc9b07a,
-    roughness: 0.55,
-    metalness: 0,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.92,
-  });
-  for (const side of [-1, 1]) {
-    const wing = mesh(new THREE.CircleGeometry(0.34, 7), wingMat, side * 0.28, 0.5, 0);
-    wing.rotation.y = side * 0.6;
-    group.add(wing);
-  }
-  return { group, eyes: addEyes(group, 0.62, 0.08, 0.06, 0.6) };
-}
-
-function hare(): { group: THREE.Group; eyes: THREE.Object3D[] } {
-  const group = new THREE.Group();
-  const fur = std(0xe7e1d6);
-  group.add(mesh(new THREE.SphereGeometry(0.32, 12, 10), fur, 0, 0.36, 0));
-  group.add(mesh(new THREE.SphereGeometry(0.2, 12, 10), fur, 0, 0.58, 0.16));
-  for (const side of [-1, 1]) {
-    group.add(mesh(new THREE.CapsuleGeometry(0.04, 0.32, 3, 6), fur, side * 0.08, 0.92, 0.12));
-  }
-  return { group, eyes: addEyes(group, 0.6, 0.3, 0.08, 0.75) };
-}
-
-const BUILDERS: Record<Species, () => { group: THREE.Group; eyes: THREE.Object3D[] }> = {
-  fox,
-  ant,
-  penguin,
-  tiger,
-  dog,
-  parrot,
-  cook,
-  chesscat,
-  tanuki,
-  crane,
-  moth,
-  hare,
-};
 
 function labelTexture(text: string, accent: string) {
   const canvas = document.createElement("canvas");
@@ -593,7 +448,7 @@ export class GardenScene {
     const depth = HALL_D + ROOM_D * 2 + 1.2;
     const slab = mesh(new THREE.BoxGeometry(hallW + 1.6, 0.4, depth + 1.6), std(0xc9d3d8, { roughness: 1 }), 0, -0.22, 0);
     slab.castShadow = false;
-    const floor = mesh(new THREE.BoxGeometry(hallW, 0.1, depth), std(0xf1e8d8, { roughness: 0.9 }), 0, 0, 0);
+    const floor = mesh(new THREE.BoxGeometry(hallW, 0.1, depth), std(0xdfa967, { roughness: 0.8 }), 0, 0, 0);
     floor.castShadow = false;
     this.yard.add(slab, floor);
 
@@ -652,7 +507,15 @@ export class GardenScene {
       group.add(mesh(new THREE.BoxGeometry(part, 0.6, 0.12), wall, px, 0.35, deep));
       group.add(mesh(new THREE.BoxGeometry(part, 0.07, 0.16), std(tint.getHex()), px, 0.69, deep));
     }
-    if (upper) group.add(mesh(new THREE.BoxGeometry(ROOM_W, 0.07, 0.16), std(tint.getHex()), 0, backH + 0.08, -deep));
+    if (upper) {
+      group.add(mesh(new THREE.BoxGeometry(ROOM_W, 0.07, 0.16), std(tint.getHex()), 0, backH + 0.08, -deep));
+      for (const wx of [-1.5, 1.5]) {
+        const pane = mesh(new THREE.BoxGeometry(1.5, 0.62, 0.04), std(0x9cc7e6, { roughness: 0.25 }), wx, 1.28, -deep + 0.08);
+        pane.castShadow = false;
+        group.add(pane);
+        group.add(mesh(new THREE.BoxGeometry(0.04, 0.62, 0.05), wall, wx, 1.28, -deep + 0.1));
+      }
+    }
 
     const texture = labelTexture(room.archived ? `${room.name} · cất` : room.name, room.archived ? "#9aa3a0" : room.color || "#e2a15a");
     if (texture) {
@@ -672,7 +535,7 @@ export class GardenScene {
       const dx = (slot - (staff.length - 1) / 2) * 1.65;
       group.add(this.makeDesk(dx, -deep + 0.75, mood));
 
-      const built = BUILDERS[room.species]();
+      const built = person(tint.getHex(), index + slot);
       const animal = built.group as Animal;
       const seat = toWorld(dx, -deep + 1.75);
       const steps: Step[] = [];
@@ -700,10 +563,12 @@ export class GardenScene {
         seat,
         deskYaw,
         eyes: built.eyes,
+        legs: built.legs,
+        arms: built.arms,
         steps,
         total: steps.reduce((sum, step) => sum + step.dur, 0),
       };
-      animal.scale.setScalar(0.85);
+      animal.scale.setScalar(0.9);
       animal.position.copy(seat);
       this.yard.add(animal);
       this.animals.push(animal);
@@ -729,6 +594,12 @@ export class GardenScene {
     glass.castShadow = false;
     desk.add(glass);
     desk.add(mesh(new THREE.BoxGeometry(0.42, 0.03, 0.16), std(0xf2f2f0), 0, 0.775, 0.14));
+    const chair = std(0xfbf8f1);
+    desk.add(mesh(new THREE.BoxGeometry(0.46, 0.06, 0.44), chair, 0, 0.45, 1.0));
+    desk.add(mesh(new THREE.BoxGeometry(0.46, 0.5, 0.06), chair, 0, 0.72, 1.24));
+    for (const cx of [-0.19, 0.19]) {
+      for (const cz of [0.82, 1.18]) desk.add(mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), chair, cx, 0.21, cz));
+    }
     return desk;
   }
 
@@ -737,8 +608,13 @@ export class GardenScene {
     this.frame = requestAnimationFrame(this.tick);
     const t = this.clock.getElapsedTime();
     for (const animal of this.animals) {
-      const { mood, phase, seat, deskYaw, eyes, steps, total } = animal.userData;
+      const { mood, phase, seat, deskYaw, eyes, legs, arms, steps, total } = animal.userData;
       let eyeScale = 1;
+      let seated = true;
+      let lean = 0;
+      let stride = 0; // leg and arm swing while walking
+      let reach = 0; // arms forward, toward the keyboard
+      let yaw = deskYaw;
       if (mood === "work" && total > 0) {
         let left = (t + phase) % total;
         let step = steps[0];
@@ -748,24 +624,37 @@ export class GardenScene {
           left -= candidate.dur;
         }
         if (step.kind === "walk") {
-          const k = Math.min(left / step.dur, 1);
-          animal.position.lerpVectors(step.from, step.to, k);
-          animal.position.y = Math.abs(Math.sin(t * 9 + phase)) * 0.07;
-          animal.rotation.set(0, Math.atan2(step.to.x - step.from.x, step.to.z - step.from.z), 0);
-        } else {
+          seated = false;
+          animal.position.lerpVectors(step.from, step.to, Math.min(left / step.dur, 1));
+          animal.position.y = Math.abs(Math.sin(t * 8 + phase)) * 0.04;
+          yaw = Math.atan2(step.to.x - step.from.x, step.to.z - step.from.z);
+          stride = Math.sin(t * 8 + phase) * 0.65;
+        } else if (step.typing) {
           animal.position.copy(step.at);
-          animal.position.y = step.typing ? Math.abs(Math.sin(t * 6 + phase)) * 0.025 : 0;
-          animal.rotation.set(0, step.yaw + (step.typing ? 0 : Math.sin(t * 1.3 + phase) * 0.5), 0);
+          reach = -1.15 + Math.sin(t * 11 + phase) * 0.06;
+        } else {
+          // Standing in the lobby, having a look around.
+          seated = false;
+          animal.position.copy(step.at);
+          yaw = step.yaw + Math.sin(t * 1.3 + phase) * 0.5;
         }
       } else if (mood === "sleep") {
-        animal.position.set(seat.x, -0.04, seat.z);
-        animal.rotation.set(0, deskYaw, 0.5);
-        eyeScale = 0.2;
-      } else {
-        // Waiting: at the desk, looking around for something to start.
+        // Done for the week: head down on the desk.
         animal.position.copy(seat);
-        animal.rotation.set(0, deskYaw + Math.sin(t * 0.7 + phase) * 0.9, 0);
+        lean = 0.6;
+        reach = -1.5;
+        eyeScale = 0.15;
+      } else {
+        // Waiting: sitting at the desk, looking around for something to start.
+        animal.position.copy(seat);
+        yaw = deskYaw + Math.sin(t * 0.7 + phase) * 0.8;
       }
+      if (seated) animal.position.y = -SEAT_DROP;
+      animal.rotation.set(lean, yaw, 0);
+      legs[0].rotation.x = seated ? -1.45 : stride;
+      legs[1].rotation.x = seated ? -1.45 : -stride;
+      arms[0].rotation.x = seated ? reach : -stride * 0.8;
+      arms[1].rotation.x = seated ? reach : stride * 0.8;
       for (const eye of eyes) eye.scale.y = eyeScale;
     }
     this.controls.update();

@@ -1,17 +1,3 @@
-export type Species =
-  | "fox"
-  | "ant"
-  | "penguin"
-  | "tiger"
-  | "dog"
-  | "parrot"
-  | "cook"
-  | "chesscat"
-  | "tanuki"
-  | "crane"
-  | "moth"
-  | "hare";
-
 export type Mood = "sleep" | "work" | "wait";
 export type WorkStatus = "TODO" | "IN_PROGRESS" | "DONE";
 
@@ -30,41 +16,6 @@ export interface GardenWork {
   content: string;
   status: WorkStatus;
   note: string;
-}
-
-const SPECIES_LABEL: Record<Species, string> = {
-  fox: "Cáo",
-  ant: "Kiến",
-  penguin: "Cánh cụt",
-  tiger: "Hổ",
-  dog: "Chó",
-  parrot: "Vẹt",
-  cook: "Mèo bếp",
-  chesscat: "Mèo cờ",
-  tanuki: "Lửng",
-  crane: "Sếu",
-  moth: "Bướm đêm",
-  hare: "Thỏ",
-};
-
-export function speciesLabel(species: Species): string {
-  return SPECIES_LABEL[species];
-}
-
-export function speciesForGroup(name: string): Species {
-  const n = name.toLowerCase();
-  if (/đại học|dai hoc|đh|aizu|trường/.test(n)) return "crane";
-  if (/nhật|nhat|kanji|jlpt/.test(n)) return "fox";
-  if (/nghiệp vụ|nghiep vu|kiến|kien|nest/.test(n)) return "ant";
-  if (/\bfpt\b|phỏng vấn|phong van/.test(n)) return "penguin";
-  if (/chiến đấu|chien dau|gym|thể hình|the hinh|cardio/.test(n)) return "tiger";
-  if (/lái xe|lai xe|bằng lái|bang lai/.test(n)) return "dog";
-  if (/nấu|nau ăn|nau an|nấu ăn/.test(n)) return "cook";
-  if (/cờ vua|co vua|chess/.test(n)) return "chesscat";
-  if (/thú vui|thu vui/.test(n)) return "tanuki";
-  if (/mbti|tiktok|page/.test(n)) return "moth";
-  if (/tiếng anh|tieng anh|english|toeic|\banh\b/.test(n)) return "parrot";
-  return "hare";
 }
 
 export function moodFor(items: { status: string }[]): Mood {

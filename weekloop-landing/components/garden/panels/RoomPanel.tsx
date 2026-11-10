@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, Trash } from "@phosphor-icons/react";
 import type { ResourceApiData } from "@/lib/api";
-import { speciesLabel, type GardenWork, type WorkStatus } from "@/lib/garden/model";
+import type { GardenWork, WorkStatus } from "@/lib/garden/model";
 import type { SceneRoom } from "../GardenScene";
 import { ResourceForm, ResourceRow, type ResourceDraft } from "./ResourcesPanel";
 
@@ -23,6 +23,8 @@ interface Props {
   room: SceneRoom;
   tasks: GardenWork[];
   resources: ResourceApiData[];
+  /** Position among active departments, 0 = most important. -1 for a shelved one. */
+  priority: { position: number; count: number; saving: boolean; onChange: (position: number) => void };
   onCycle: (task: GardenWork) => void;
   onAdd: (content: string) => void;
   onSave: (task: GardenWork, changes: { content: string; note: string }) => void;
@@ -33,7 +35,7 @@ interface Props {
 }
 
 export default function RoomPanel(props: Props) {
-  const { room, tasks, resources } = props;
+  const { room, tasks, resources, priority } = props;
   const [tab, setTab] = useState<"tasks" | "resources">("tasks");
   const [draft, setDraft] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -45,9 +47,28 @@ export default function RoomPanel(props: Props) {
         {room.name}
       </h2>
       <p className="g-sub">
-        Nhân viên: {speciesLabel(room.species)} · Xong {room.done}/{room.total} việc tuần này
+        Xong {room.done}/{room.total} việc tuần này
         {room.archived ? " · Đầu việc đang cất" : ""}
       </p>
+
+      {priority.position >= 0 && (
+        <label className="g-inline-field">
+          <span>Độ ưu tiên</span>
+          <select
+            className="g-input compact"
+            value={priority.position}
+            disabled={priority.saving}
+            onChange={(event) => priority.onChange(Number(event.target.value))}
+          >
+            {Array.from({ length: priority.count }, (_, index) => (
+              <option key={index} value={index}>
+                {index + 1} / {priority.count}
+                {index === 0 ? " (cao nhất)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="g-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "tasks"} onClick={() => setTab("tasks")}>
