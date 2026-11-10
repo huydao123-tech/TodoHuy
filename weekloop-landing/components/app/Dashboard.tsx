@@ -890,8 +890,8 @@ export default function Dashboard() {
           <Link
             href="/garden"
             id="open-garden"
-            title="Khu vườn"
-            aria-label="Mở khu vườn việc"
+            title="Văn phòng"
+            aria-label="Mở văn phòng việc"
             style={{
               display: "flex",
               alignItems: "center",

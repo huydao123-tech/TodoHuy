@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Buildings, CaretLeft, CaretRight, FolderSimple, Notebook, PushPin, X } from "@phosphor-icons/react";
 import { useSearchParams } from "next/navigation";
 import {
   dashboardApi,
@@ -17,9 +18,9 @@ import { formatWeekDateStr, getMonday } from "@/lib/mockData";
 import {
   cycleStatus,
   moodFor,
+  staffFor,
   shiftWeek,
   speciesForGroup,
-  speciesLabel,
   visibleGroups,
   weekCounts,
   weekLabel,
@@ -37,6 +38,7 @@ import "./garden.css";
 
 /** One panel at a time. The yard is for looking and walking; everything editable lives here. */
 type Panel =
+  | { kind: "rooms" }
   | { kind: "room"; id: string }
   | { kind: "notes"; noteId: string | null }
   | { kind: "side"; id: string | null }
@@ -135,7 +137,6 @@ export default function GardenApp() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [hover, setHover] = useState<ScenePick | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -198,6 +199,7 @@ export default function GardenApp() {
           species: speciesForGroup(group.name),
           archived: group.isArchived,
           mood: moodFor(items),
+          staff: staffFor(items),
           done: items.filter((item) => item.status === "DONE").length,
           total: items.length,
         };
@@ -205,7 +207,7 @@ export default function GardenApp() {
     [shown, works, week]
   );
   // The scene is rebuilt only when something it draws changes, not on every keystroke.
-  const roomKey = rooms.map((room) => `${room.id}:${room.mood}:${room.name}:${room.archived}:${room.color}`).join("|");
+  const roomKey = rooms.map((room) => `${room.id}:${room.staff.join("")}:${room.name}:${room.archived}:${room.color}`).join("|");
   const sideKey = sides.map((side) => side.id).join("|");
   const counts = week ? weekCounts(works, week) : { todo: 0, doing: 0, done: 0, total: 0 };
   const selected = panel?.kind === "room" ? panel.id : null;
@@ -258,11 +260,12 @@ export default function GardenApp() {
         if (!dead) setWebgl(false);
       }
     })();
-    const onResize = () => sceneRef.current?.resize();
-    window.addEventListener("resize", onResize);
+    // The stage changes width when the detail panel opens, so watch the canvas itself.
+    const observer = new ResizeObserver(() => sceneRef.current?.resize());
+    observer.observe(canvas);
     return () => {
       dead = true;
-      window.removeEventListener("resize", onResize);
+      observer.disconnect();
       scene?.dispose();
       if (sceneRef.current === scene) sceneRef.current = null;
       setSceneReady(false);
@@ -461,125 +464,150 @@ export default function GardenApp() {
       : hover?.kind === "notes"
         ? `Sổ tay · ${notes.length} ghi chú`
         : hover?.kind === "resources"
-          ? `Kệ sách · ${resources.length} tài liệu`
+          ? `Tủ tài liệu · ${resources.length} tài liệu`
           : hover?.kind === "side"
-            ? (sides.find((side) => side.id === hover.id)?.name ?? `Hàng rào · ${sides.length} việc phụ`)
+            ? (sides.find((side) => side.id === hover.id)?.name ?? `Bảng ghim · ${sides.length} việc phụ`)
             : null;
 
-  return (
-    <div className="garden">
-      <canvas ref={canvasRef} aria-label="Khu vườn các đầu việc trong tuần" />
-      {!ready && !error && <div className="garden-loading">Đang mở vườn…</div>}
-      {webgl === false && (
-        <div className="garden-fallback" aria-label="Danh sách đầu việc">
-          {rooms.map((room) => (
-            <button key={room.id} type="button" onClick={() => openRoom(room.id)}>
-              <strong>{room.name}</strong>
-              <span>
-                {" "}
-                · {speciesLabel(room.species)} · {room.done}/{room.total}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+  const places = (
+    <>
+      <button type="button" className="g-place" aria-pressed={panel?.kind === "notes"} onClick={() => setPanel({ kind: "notes", noteId: null })}>
+        <Notebook size={18} aria-hidden />
+        <span>Ghi chú</span>
+        <b>{notes.length}</b>
+      </button>
+      <button type="button" className="g-place" aria-pressed={panel?.kind === "side"} onClick={() => setPanel({ kind: "side", id: null })}>
+        <PushPin size={18} aria-hidden />
+        <span>Việc phụ</span>
+        <b>{sides.length}</b>
+      </button>
+      <button type="button" className="g-place" aria-pressed={panel?.kind === "resources"} onClick={() => setPanel({ kind: "resources" })}>
+        <FolderSimple size={18} aria-hidden />
+        <span>Tài liệu</span>
+        <b>{resources.length}</b>
+      </button>
+    </>
+  );
 
-      <div className="garden-top">
-        <div className="garden-week">
-          <button
-            className="garden-icon"
-            type="button"
-            aria-label="Tuần trước"
-            onClick={() => week && setWeek(shiftWeek(week, -1))}
-          >
-            ‹
+  const roomList = (
+    <ul className="g-list">
+      {rooms.map((room) => (
+        <li key={room.id}>
+          <button type="button" className="g-nav-row" aria-current={selected === room.id || undefined} onClick={() => openRoom(room.id)}>
+            <i style={{ background: room.archived ? "var(--text-faint)" : room.color }} aria-hidden />
+            <span>{room.name}</span>
+            <b>
+              {room.done}/{room.total}
+            </b>
           </button>
-          <strong>{week ? weekLabel(week) : "…"}</strong>
-          <button
-            className="garden-icon"
-            type="button"
-            aria-label="Tuần sau"
-            onClick={() => week && setWeek(shiftWeek(week, 1))}
-          >
-            ›
-          </button>
-        </div>
-        <span className="garden-chip">
-          <em>{counts.doing} đang làm</em>
-          <span>{counts.todo} chưa</span>
-          <span className="done">{counts.done} xong</span>
-        </span>
-        <Link className="garden-chip" href="/dashboard">
+        </li>
+      ))}
+    </ul>
+  );
+
+  return (
+    <div className="garden" data-panel={panel ? "open" : undefined}>
+      <header className="g-header">
+        <Link className="g-btn ghost" href="/dashboard">
+          <ArrowLeft size={16} aria-hidden />
           Bảng tuần
         </Link>
-      </div>
-
-      <div className="garden-dock">
-        {preview && <p className="garden-banner">Bản xem thử. Đăng nhập để thấy việc thật trong Firestore.</p>}
-        {error && <p className="garden-error">{error}</p>}
-        {showHelp && (
-          <p className="garden-hint">
-            Kéo để xoay, cuộn để lại gần. Bấm con vật hoặc căn nhà để mở việc tuần của đầu việc đó. Giữa sân, quanh cây đèn, có sổ tay, kệ
-            sách và hàng rào chim việc phụ. Phím 1–9 mở từng căn, N ghi chú, P việc phụ, T tài liệu, Esc đóng.
-          </p>
-        )}
-        <div className="garden-dots" aria-label="Các căn trong vườn">
-          {rooms.map((room, index) => (
-            <button
-              key={room.id}
-              type="button"
-              aria-label={`${index + 1}. ${room.name}`}
-              aria-pressed={selected === room.id}
-              title={room.name}
-              style={{ background: room.color }}
-              onClick={() => openRoom(room.id)}
-            />
-          ))}
+        <div className="g-week">
+          <button className="g-btn icon" type="button" aria-label="Tuần trước" onClick={() => week && setWeek(shiftWeek(week, -1))}>
+            <CaretLeft size={16} aria-hidden />
+          </button>
+          <strong>{week ? weekLabel(week) : "…"}</strong>
+          <button className="g-btn icon" type="button" aria-label="Tuần sau" onClick={() => week && setWeek(shiftWeek(week, 1))}>
+            <CaretRight size={16} aria-hidden />
+          </button>
         </div>
-        <nav className="garden-places" aria-label="Sổ tay, việc phụ, tài liệu">
-          <button type="button" aria-pressed={panel?.kind === "notes"} onClick={() => setPanel({ kind: "notes", noteId: null })}>
-            Ghi chú <span>{notes.length}</span>
-          </button>
-          <button type="button" aria-pressed={panel?.kind === "side"} onClick={() => setPanel({ kind: "side", id: null })}>
-            Việc phụ <span>{sides.length}</span>
-          </button>
-          <button type="button" aria-pressed={panel?.kind === "resources"} onClick={() => setPanel({ kind: "resources" })}>
-            Tài liệu <span>{resources.length}</span>
-          </button>
-          <button type="button" className="help" aria-pressed={showHelp} aria-label="Hướng dẫn" onClick={() => setShowHelp((v) => !v)}>
-            ?
-          </button>
+        <p className="g-counts">
+          <span>
+            <b>{counts.doing}</b> đang làm
+          </span>
+          <span>
+            <b>{counts.todo}</b> chưa làm
+          </span>
+          <span>
+            <b>{counts.done}</b> xong
+          </span>
+        </p>
+        <nav className="g-places in-header" aria-label="Ghi chú, việc phụ, tài liệu">
+          {places}
         </nav>
-      </div>
+      </header>
 
-      {hover && hoverName && (
-        <div className="garden-tip" style={{ left: hover.x, top: hover.y }}>
-          {hoverName}
-        </div>
-      )}
+      <aside className="g-sidebar" aria-label="Phòng ban">
+        <h2 className="g-label">Phòng ban</h2>
+        {rooms.length === 0 && ready ? <p className="g-empty">Chưa có đầu việc nào.</p> : roomList}
+        <dl className="g-legend">
+          <div>
+            <dt>Đi lại</dt>
+            <dd>việc đang làm</dd>
+          </div>
+          <div>
+            <dt>Ngồi chờ</dt>
+            <dd>việc chưa làm</dd>
+          </div>
+          <div>
+            <dt>Nằm nghỉ</dt>
+            <dd>việc đã xong</dd>
+          </div>
+        </dl>
+      </aside>
 
-      {toast && (
-        <div className="garden-toast" role="status" key={toast.key}>
-          <span>{toast.text}</span>
-          {toast.undo && (
-            <button
-              type="button"
-              onClick={() => {
-                toast.undo?.();
-                setToast(null);
-              }}
-            >
-              Hoàn tác
-            </button>
+      <main className="g-stage">
+        <canvas ref={canvasRef} aria-label="Văn phòng các đầu việc trong tuần" />
+        {!ready && !error && <p className="g-loading">Đang mở văn phòng…</p>}
+        {webgl === false && (
+          <div className="g-fallback">
+            <p className="g-empty">Trình duyệt này không vẽ được 3D. Chọn phòng ban trong danh sách để làm việc.</p>
+          </div>
+        )}
+        <div className="g-notices">
+          {preview && <p className="g-banner">Bản xem thử, dữ liệu mẫu. Thay đổi không được lưu.</p>}
+          {error && (
+            <p className="g-banner error" role="alert">
+              {error}
+            </p>
           )}
         </div>
-      )}
+        {webgl && ready && <p className="g-hint">Kéo để di chuyển · Cuộn để phóng · Chuột phải để xoay</p>}
+        {hover && hoverName && (
+          <div className="g-tip" style={{ left: hover.x, top: hover.y }}>
+            {hoverName}
+          </div>
+        )}
+        {toast && (
+          <div className="g-toast" role="status" key={toast.key}>
+            <span>{toast.text}</span>
+            {toast.undo && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.undo?.();
+                  setToast(null);
+                }}
+              >
+                Hoàn tác
+              </button>
+            )}
+          </div>
+        )}
+      </main>
 
       {panel && (
-        <aside className="garden-panel" aria-label="Chi tiết">
-          <button className="garden-close" type="button" aria-label="Đóng" onClick={closePanel}>
-            ×
+        <aside className="g-panel" aria-label="Chi tiết">
+          <button className="g-btn ghost icon g-close" type="button" aria-label="Đóng" onClick={closePanel}>
+            <X size={16} aria-hidden />
           </button>
+          {panel.kind === "rooms" && (
+            <>
+              <h2 className="g-title">Phòng ban</h2>
+              <p className="g-sub">Mỗi đầu việc là một phòng. Số bên phải là việc đã xong trên tổng việc tuần này.</p>
+              {roomList}
+            </>
+          )}
           {panel.kind === "room" && current && week && (
             <RoomPanel
               key={current.id}
@@ -595,7 +623,7 @@ export default function GardenApp() {
               onDeleteResource={deleteResource}
             />
           )}
-          {panel.kind === "room" && !current && <p className="garden-empty">Căn này không có trong tuần đang xem.</p>}
+          {panel.kind === "room" && !current && <p className="g-empty">Phòng này không có trong tuần đang xem.</p>}
           {panel.kind === "notes" && (
             <NotesPanel
               notes={notes}
@@ -620,6 +648,15 @@ export default function GardenApp() {
           )}
         </aside>
       )}
+
+      <nav className="g-places in-footer" aria-label="Phòng ban, ghi chú, việc phụ, tài liệu">
+        <button type="button" className="g-place" aria-pressed={panel?.kind === "rooms" || panel?.kind === "room"} onClick={() => setPanel({ kind: "rooms" })}>
+          <Buildings size={18} aria-hidden />
+          <span>Phòng ban</span>
+          <b>{rooms.length}</b>
+        </button>
+        {places}
+      </nav>
     </div>
   );
 }

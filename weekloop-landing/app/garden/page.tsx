@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import GardenApp from "@/components/garden/GardenApp";
 
 export const metadata = {
-  title: "Khu vườn việc",
-  description: "Sân đêm cho các đầu việc trong tuần. Mỗi đầu việc là một căn và một con vật.",
+  title: "Văn phòng việc",
+  description: "Văn phòng cho các đầu việc trong tuần. Mỗi đầu việc là một phòng ban, mỗi việc là một nhân viên.",
 };
 
 export default function GardenPage() {
