@@ -73,3 +73,38 @@ test("week counts and shifting stay on Mondays", () => {
   assert.equal(cycleStatus("IN_PROGRESS"), "DONE");
   assert.equal(cycleStatus("DONE"), "TODO");
 });
+
+test("note category changes keep the cover and icon", async () => {
+  const { parseNoteColor, withNoteCategory, filterNotes } = await import("../lib/garden/model.ts");
+  assert.deepEqual(parseNoteColor("sky:Học tập:🎯"), { cover: "sky", category: "Học tập", icon: "🎯" });
+  assert.deepEqual(parseNoteColor("stone"), { cover: "stone", category: "Ý tưởng", icon: "📝" });
+  assert.equal(withNoteCategory("sky:Học tập:🎯", "Dự án"), "sky:Dự án:🎯");
+  const notes = [
+    { title: "Cờ", content: "khai cuộc", color: "stone:Học tập:📝", updatedAt: "2026-11-01T00:00:00Z" },
+    { title: "Mua đồ", content: "bóng đèn", color: "stone:Cá nhân:📝", updatedAt: "2026-11-05T00:00:00Z" },
+  ];
+  assert.deepEqual(filterNotes(notes, "", null).map((n) => n.title), ["Mua đồ", "Cờ"]);
+  assert.deepEqual(filterNotes(notes, "KHAI", null).map((n) => n.title), ["Cờ"]);
+  assert.deepEqual(filterNotes(notes, "", "Cá nhân").map((n) => n.title), ["Mua đồ"]);
+});
+
+test("resources group by yard order with loose ones last", async () => {
+  const { groupResources, normalizeLink, isWebLink } = await import("../lib/garden/model.ts");
+  const groups = [
+    { id: "b", name: "B", color: "#111", displayOrder: 2, isArchived: false },
+    { id: "a", name: "A", color: "#111", displayOrder: 1, isArchived: false },
+  ];
+  const resources = [
+    { id: "1", taskGroupId: "b" },
+    { id: "2", taskGroupId: null },
+    { id: "3", taskGroupId: "a" },
+    { id: "4", taskGroupId: "gone" },
+  ];
+  const sections = groupResources(resources, groups);
+  assert.deepEqual(sections.map((s) => s.name), ["A", "B", "Chung"]);
+  assert.deepEqual(sections[2].items.map((r) => r.id), ["2", "4"]);
+  assert.equal(normalizeLink(" example.com/a "), "https://example.com/a");
+  assert.equal(normalizeLink("http://x.vn"), "http://x.vn");
+  assert.equal(normalizeLink("tủ sách ở nhà"), "tủ sách ở nhà");
+  assert.equal(isWebLink("javascript:alert(1)"), false);
+});

@@ -14,7 +14,7 @@ export interface SceneRoom {
 }
 
 export interface ScenePick {
-  kind: "room" | "side" | "notes";
+  kind: "room" | "side" | "notes" | "resources";
   id?: string;
   name?: string;
   x: number;
@@ -384,27 +384,33 @@ export class GardenScene {
       this.scene.remove(existing);
       disposeTree(existing);
     }
+    // The fence stands in the plaza by the lamp, built along local z then turned to face the camera.
     const fence = new THREE.Group();
     fence.name = "fence";
+    fence.userData = { pick: "side" };
+    fence.position.set(0, 0, 3.1);
+    fence.rotation.y = Math.PI / 2;
     const wood = std(0x6b4a2e);
-    const x = -16.4;
-    for (let z = -5; z <= 5; z += 2) {
-      fence.add(mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), wood, x, 0.45, z));
+    for (let z = -3; z <= 3; z += 1.5) {
+      fence.add(mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), wood, 0, 0.45, z));
     }
-    fence.add(mesh(new THREE.BoxGeometry(0.08, 0.08, 10.2), wood, x, 0.72, 0));
-    fence.add(mesh(new THREE.BoxGeometry(0.08, 0.08, 10.2), wood, x, 0.38, 0));
+    fence.add(mesh(new THREE.BoxGeometry(0.08, 0.08, 6.2), wood, 0, 0.72, 0));
+    fence.add(mesh(new THREE.BoxGeometry(0.08, 0.08, 6.2), wood, 0, 0.38, 0));
+    const sign = new THREE.Group();
+    this.addSign(sign, sides.length > 8 ? `Việc phụ · ${sides.length}` : "Việc phụ", 1.75);
+    fence.add(sign);
     const shown = sides.slice(0, 8);
     shown.forEach((side, index) => {
       const bird = new THREE.Group();
-      bird.userData = { pick: "side", id: side.id };
+      bird.userData = { pick: "side", id: side.id, phase: index * 0.7 };
       const span = Math.max(shown.length - 1, 1);
-      const z = shown.length === 1 ? 0 : -4 + (index / span) * 8;
-      bird.position.set(x, 0.95, z);
-      bird.add(mesh(new THREE.SphereGeometry(0.12, 10, 8), std(0x7f9b86), 0, 0, 0));
-      const beak = mesh(new THREE.ConeGeometry(0.04, 0.12, 4), std(0xe2a15a), 0, 0, 0.12);
+      const z = shown.length === 1 ? 0 : -2.6 + (index / span) * 5.2;
+      bird.position.set(0, 0.95, z);
+      bird.rotation.y = -Math.PI / 2;
+      bird.add(mesh(new THREE.SphereGeometry(0.14, 10, 8), std(0x7f9b86), 0, 0, 0));
+      const beak = mesh(new THREE.ConeGeometry(0.045, 0.13, 4), std(0xe2a15a), 0, 0, 0.14);
       beak.rotation.x = Math.PI / 2;
       bird.add(beak);
-      bird.userData.phase = index * 0.7;
       fence.add(bird);
     });
     this.scene.add(fence);
@@ -467,12 +473,49 @@ export class GardenScene {
     const lamp = mesh(new THREE.SphereGeometry(0.22, 12, 10), std(0xffc27a, { emissive: 0xff8a3d }), 0, 1.7, 0);
     this.scene.add(pole, lamp);
     const stall = new THREE.Group();
-    stall.position.set(-15.5, 0, 2);
+    stall.position.set(-2.7, 0, -0.4);
+    stall.rotation.y = 0.35;
     stall.userData = { pick: "notes" };
     stall.add(mesh(new THREE.BoxGeometry(1.4, 0.7, 0.8), std(0x5c4030), 0, 0.35, 0));
     stall.add(mesh(new THREE.BoxGeometry(0.7, 0.12, 0.5), std(0xf4efe4), 0, 0.76, 0));
     stall.add(mesh(new THREE.BoxGeometry(0.62, 0.08, 0.42), std(0x8f3d3d), 0.05, 0.86, 0));
+    this.addSign(stall, "Sổ tay", 1.6);
     this.scene.add(stall);
+
+    // Bookshelf for resources. Notebook, shelf and fence share the plaza by the lamp, so they are always in view.
+    const shelf = new THREE.Group();
+    shelf.position.set(2.7, 0, -0.6);
+    shelf.rotation.y = -0.35;
+    shelf.userData = { pick: "resources" };
+    shelf.add(mesh(new THREE.BoxGeometry(1.5, 1.5, 0.5), std(0x4a3526), 0, 0.75, 0));
+    const spines = [0x8f3d3d, 0x3d6b8f, 0xd9a441, 0x4f8a5b, 0x7a4f9a, 0xc9c2b2];
+    for (let row = 0; row < 2; row++) {
+      spines.forEach((color, index) => {
+        const tall = 0.42 + ((index + row) % 3) * 0.05;
+        shelf.add(
+          mesh(
+            new THREE.BoxGeometry(0.16, tall, 0.3),
+            std(spines[(index + row * 2) % spines.length] ?? color),
+            -0.5 + index * 0.2,
+            0.18 + row * 0.68 + tall / 2,
+            0.14
+          )
+        );
+      });
+    }
+    this.addSign(shelf, "Tài liệu", 2.1);
+    this.scene.add(shelf);
+  }
+
+  private addSign(target: THREE.Object3D, text: string, height: number) {
+    const texture = labelTexture(text, "#e2a15a");
+    if (!texture) return;
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
+    );
+    sprite.position.set(0, height, 0);
+    sprite.scale.set(2, 0.5, 1);
+    target.add(sprite);
   }
 
   private placeRoom(room: SceneRoom, index: number, count: number, radius: number, archived: boolean) {

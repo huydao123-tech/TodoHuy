@@ -138,3 +138,71 @@ export function noteTag(color: string): string {
   const parts = color.split(":");
   return parts[1]?.trim() || "Ghi chú";
 }
+
+export const NOTE_CATEGORIES = ["Ý tưởng", "Công việc", "Học tập", "Cá nhân", "Dự án"] as const;
+
+/** Notes keep cover, category and icon packed in one `color` field: "stone:Học tập:📝". */
+export function parseNoteColor(color: string): { cover: string; category: string; icon: string } {
+  const parts = (color || "").split(":");
+  const category = parts[1]?.trim() ?? "";
+  return {
+    cover: parts[0]?.trim() || "stone",
+    category: (NOTE_CATEGORIES as readonly string[]).includes(category) ? category : NOTE_CATEGORIES[0],
+    icon: parts[2]?.trim() || "📝",
+  };
+}
+
+/** Change only the category, so the cover and icon chosen on the dashboard survive. */
+export function withNoteCategory(color: string, category: string): string {
+  const parsed = parseNoteColor(color);
+  return `${parsed.cover}:${category}:${parsed.icon}`;
+}
+
+export function filterNotes<T extends { title: string; content: string; color: string; updatedAt: string }>(
+  notes: T[],
+  query: string,
+  category: string | null
+): T[] {
+  const q = query.trim().toLowerCase();
+  return notes
+    .filter((note) => !category || parseNoteColor(note.color).category === category)
+    .filter((note) => !q || note.title.toLowerCase().includes(q) || note.content.toLowerCase().includes(q))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export interface ResourceSection<T> {
+  groupId: string | null;
+  name: string;
+  items: T[];
+}
+
+/** Resources by task group, in yard order. Loose ones (no group, or a deleted group) go last under "Chung". */
+export function groupResources<T extends { taskGroupId: string | null }>(
+  resources: T[],
+  groups: GardenGroup[]
+): ResourceSection<T>[] {
+  const known = new Set(groups.map((group) => group.id));
+  const sections: ResourceSection<T>[] = [...groups]
+    .sort(byOrder)
+    .map((group) => ({
+      groupId: group.id,
+      name: group.name,
+      items: resources.filter((item) => item.taskGroupId === group.id),
+    }))
+    .filter((section) => section.items.length > 0);
+  const loose = resources.filter((item) => !item.taskGroupId || !known.has(item.taskGroupId));
+  if (loose.length > 0) sections.push({ groupId: null, name: "Chung", items: loose });
+  return sections;
+}
+
+/** "example.com/a" becomes "https://example.com/a". Anything that is not a web address is kept as plain text. */
+export function normalizeLink(raw: string): string {
+  const link = raw.trim();
+  if (!link || /^https?:\/\//i.test(link)) return link;
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(link)) return `https://${link}`;
+  return link;
+}
+
+export function isWebLink(link: string): boolean {
+  return /^https?:\/\//i.test(link);
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -17,7 +17,6 @@ import { formatWeekDateStr, getMonday } from "@/lib/mockData";
 import {
   cycleStatus,
   moodFor,
-  noteTag,
   shiftWeek,
   speciesForGroup,
   speciesLabel,
@@ -30,19 +29,26 @@ import {
   type WorkStatus,
 } from "@/lib/garden/model";
 import type { GardenScene, ScenePick, SceneRoom } from "./GardenScene";
+import NotesPanel from "./panels/NotesPanel";
+import ResourcesPanel, { type ResourceDraft } from "./panels/ResourcesPanel";
+import RoomPanel from "./panels/RoomPanel";
+import SidePanel, { type SideItem } from "./panels/SidePanel";
 import "./garden.css";
 
-const STATUS_LABEL: Record<WorkStatus, string> = {
-  TODO: "Chưa làm",
-  IN_PROGRESS: "Đang làm",
-  DONE: "Xong",
-};
+/** One panel at a time. The yard is for looking and walking; everything editable lives here. */
+type Panel =
+  | { kind: "room"; id: string }
+  | { kind: "notes"; noteId: string | null }
+  | { kind: "side"; id: string | null }
+  | { kind: "resources" };
 
-interface SideItem {
-  id: string;
-  name: string;
-  isDone: boolean;
+interface Toast {
+  key: number;
+  text: string;
+  undo?: () => void;
 }
+
+const localId = () => `local-${Date.now()}-${Math.round(Math.random() * 1e4)}`;
 
 function buildPreview(week: string) {
   const groups: GardenGroup[] = [
@@ -116,8 +122,7 @@ export default function GardenApp() {
   const preview = useSearchParams().get("preview") === "1";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<GardenScene | null>(null);
-  const roomsRef = useRef<SceneRoom[]>([]);
-  const sidesRef = useRef<SideItem[]>([]);
+  const [sceneReady, setSceneReady] = useState(false);
   const [week, setWeek] = useState<string | null>(null);
   const [groups, setGroups] = useState<GardenGroup[]>([]);
   const [works, setWorks] = useState<GardenWork[]>([]);
@@ -127,29 +132,25 @@ export default function GardenApp() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [webgl, setWebgl] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"room" | "notes" | "side" | null>(null);
-  const [sideId, setSideId] = useState<string | null>(null);
-  const [noteId, setNoteId] = useState<string | null>(null);
-  const [noteTitle, setNoteTitle] = useState("");
-  const [noteBody, setNoteBody] = useState("");
-  const [draft, setDraft] = useState("");
+  const [panel, setPanel] = useState<Panel | null>(null);
   const [hover, setHover] = useState<ScenePick | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     let cancel = false;
     (async () => {
       setError("");
       if (preview) {
-        const monday = formatWeekDateStr(getMonday());
-        const chosen = week ?? monday;
+        const chosen = week ?? formatWeekDateStr(getMonday());
         const bundle = buildPreview(chosen);
         if (cancel) return;
         setGroups(bundle.groups);
-        setWorks(bundle.works);
-        setSides(bundle.sides);
-        setNotes(bundle.notes);
-        setResources(bundle.resources);
+        // Preview keeps local edits when the week changes; only the first load seeds data.
+        setWorks((list) => (list.length ? list : bundle.works));
+        setSides((list) => (list.length ? list : bundle.sides));
+        setNotes((list) => (list.length ? list : bundle.notes));
+        setResources((list) => (list.length ? list : bundle.resources));
         if (!week) setWeek(chosen);
         setReady(true);
         return;
@@ -203,22 +204,22 @@ export default function GardenApp() {
       }),
     [shown, works, week]
   );
-  const roomKey = rooms.map((room) => `${room.id}:${room.mood}:${room.name}:${room.archived}`).join("|");
+  // The scene is rebuilt only when something it draws changes, not on every keystroke.
+  const roomKey = rooms.map((room) => `${room.id}:${room.mood}:${room.name}:${room.archived}:${room.color}`).join("|");
   const sideKey = sides.map((side) => side.id).join("|");
-  roomsRef.current = rooms;
-  sidesRef.current = sides;
   const counts = week ? weekCounts(works, week) : { todo: 0, doing: 0, done: 0, total: 0 };
+  const selected = panel?.kind === "room" ? panel.id : null;
   const current = rooms.find((room) => room.id === selected) ?? null;
-  const tasks = week && selected ? weekWorks(works, week, selected) : [];
-  const roomResources = resources.filter((item) => item.taskGroupId === selected);
-  const currentSide = sides.find((side) => side.id === sideId) ?? null;
 
-  useEffect(() => {
-    const note = notes.find((item) => item.id === noteId);
-    if (!note) return;
-    setNoteTitle(note.title);
-    setNoteBody(note.content);
-  }, [noteId, notes]);
+  const openRoom = useCallback((id: string) => {
+    setPanel({ kind: "room", id });
+    sceneRef.current?.focus(id);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setPanel(null);
+    sceneRef.current?.focus(null);
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -239,30 +240,20 @@ export default function GardenApp() {
         scene.setHandlers(
           (pick) => {
             setHover(null);
-            if (pick.kind === "notes") {
-              setPanel("notes");
-              setSelected(null);
-              return;
-            }
-            if (pick.kind === "side" && pick.id) {
-              setPanel("side");
-              setSideId(pick.id);
-              return;
-            }
-            if (pick.kind === "room" && pick.id) {
-              setPanel("room");
-              setSelected(pick.id);
+            if (pick.kind === "notes") setPanel({ kind: "notes", noteId: null });
+            else if (pick.kind === "resources") setPanel({ kind: "resources" });
+            else if (pick.kind === "side") setPanel({ kind: "side", id: pick.id ?? null });
+            else if (pick.kind === "room" && pick.id) {
+              setPanel({ kind: "room", id: pick.id });
               scene?.focus(pick.id);
             }
           },
           (pick) => setHover(pick)
         );
-        scene.setRooms(roomsRef.current);
-        scene.setSides(sidesRef.current);
         if (preview) {
           (window as unknown as { __garden?: GardenScene }).__garden = scene;
         }
-        setWebgl(true);
+        setSceneReady(true);
       } catch {
         if (!dead) setWebgl(false);
       }
@@ -274,118 +265,206 @@ export default function GardenApp() {
       window.removeEventListener("resize", onResize);
       scene?.dispose();
       if (sceneRef.current === scene) sceneRef.current = null;
+      setSceneReady(false);
     };
-    // Scene is created once. Later room updates go through the effects below.
+  }, [ready, preview]);
+
+  useEffect(() => {
+    if (sceneReady) sceneRef.current?.setRooms(rooms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  }, [sceneReady, roomKey]);
 
   useEffect(() => {
-    sceneRef.current?.setRooms(rooms);
-  }, [roomKey, rooms]);
-
-  useEffect(() => {
-    sceneRef.current?.setSides(sides);
-  }, [sideKey, sides]);
+    if (sceneReady) sceneRef.current?.setSides(sides);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneReady, sideKey]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const tag = (event.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (event.key === "Escape") {
-        setPanel(null);
-        setSelected(null);
-        sceneRef.current?.focus(null);
+        closePanel();
+        return;
       }
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key >= "1" && event.key <= "9") {
         const room = rooms[Number(event.key) - 1];
-        if (!room) return;
-        setPanel("room");
-        setSelected(room.id);
-        sceneRef.current?.focus(room.id);
+        if (room) openRoom(room.id);
       }
+      if (event.key === "n") setPanel({ kind: "notes", noteId: null });
+      if (event.key === "p") setPanel({ kind: "side", id: null });
+      if (event.key === "t") setPanel({ kind: "resources" });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rooms]);
+  }, [rooms, openRoom, closePanel]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const flash = (text: string, undo?: () => void) => setToast({ key: Date.now(), text, undo });
+
+  /** Runs the Firestore write unless this is the preview. Returns false and shows the message when it fails. */
+  async function remote<T>(write: () => Promise<T>, failed: string): Promise<T | false> {
+    if (preview) return undefined as T;
+    try {
+      return await write();
+    } catch {
+      setError(failed);
+      return false;
+    }
+  }
+
+  // ─── Việc trong tuần ────────────────────────────────────────────────────
+  const patchWork = (id: string, patch: Partial<GardenWork>) =>
+    setWorks((list) => list.map((work) => (work.id === id ? { ...work, ...patch } : work)));
 
   async function changeStatus(item: GardenWork) {
     const next = cycleStatus(item.status);
-    const previous = item.status;
-    setWorks((list) => list.map((work) => (work.id === item.id ? { ...work, status: next } : work)));
-    if (preview) return;
-    try {
-      await workItemApi.update(item.id, { status: next });
-    } catch {
-      setWorks((list) => list.map((work) => (work.id === item.id ? { ...work, status: previous } : work)));
-      setError("Không lưu được trạng thái.");
-    }
+    patchWork(item.id, { status: next });
+    const ok = await remote(() => workItemApi.update(item.id, { status: next }), "Không lưu được trạng thái.");
+    if (ok === false) patchWork(item.id, { status: item.status });
   }
 
-  async function addTask(event: React.FormEvent) {
-    event.preventDefault();
-    const content = draft.trim();
-    if (!content || !selected || !week) return;
-    setDraft("");
+  async function addTask(groupId: string, content: string, note = "", status: WorkStatus = "TODO", toWeek = week) {
+    if (!toWeek) return;
     if (preview) {
-      setWorks((list) => [
-        ...list,
-        { id: `local-${Date.now()}`, taskGroupId: selected, weekStartDate: week, content, status: "TODO", note: "" },
-      ]);
+      setWorks((list) => [...list, { id: localId(), taskGroupId: groupId, weekStartDate: toWeek, content, status, note }]);
       return;
     }
-    try {
-      const created = await workItemApi.create(selected, week, content);
-      setWorks((list) => [...list, created]);
-    } catch {
-      setDraft(content);
-      setError("Không thêm được việc.");
-    }
+    const created = await remote(async () => {
+      const row = await workItemApi.create(groupId, toWeek, content, note);
+      if (status !== "TODO") await workItemApi.update(row.id, { status });
+      return { ...row, status };
+    }, "Không thêm được việc.");
+    if (created) setWorks((list) => [...list, created]);
   }
 
-  async function finishSide(id: string) {
-    if (!preview) {
-      try {
-        await sideTaskApi.completeAndRemove(id);
-      } catch {
-        setError("Không gỡ được việc phụ.");
-        return;
-      }
-    }
-    setSides((list) => list.filter((side) => side.id !== id));
-    setPanel(null);
-    setSideId(null);
+  async function saveTask(item: GardenWork, changes: { content: string; note: string }) {
+    patchWork(item.id, changes);
+    const ok = await remote(() => workItemApi.update(item.id, changes), "Không lưu được việc.");
+    if (ok === false) patchWork(item.id, { content: item.content, note: item.note });
   }
 
-  async function saveNote() {
-    if (!noteId) return;
+  async function deleteTask(item: GardenWork) {
+    setWorks((list) => list.filter((work) => work.id !== item.id));
+    const ok = await remote(() => workItemApi.delete(item.id), "Không xoá được việc.");
+    if (ok === false) {
+      setWorks((list) => [...list, item]);
+      return;
+    }
+    flash(`Đã xoá "${item.content}"`, () =>
+      void addTask(item.taskGroupId, item.content, item.note, item.status, item.weekStartDate)
+    );
+  }
+
+  async function moveTaskNext(item: GardenWork) {
+    const target = shiftWeek(item.weekStartDate, 1);
+    patchWork(item.id, { weekStartDate: target });
+    const ok = await remote(() => workItemApi.moveToWeek(item.id, target), "Không chuyển được việc.");
+    if (ok === false) {
+      patchWork(item.id, { weekStartDate: item.weekStartDate });
+      return;
+    }
+    flash(`Đã chuyển "${item.content}" sang tuần sau`, () => {
+      patchWork(item.id, { weekStartDate: item.weekStartDate });
+      void remote(() => workItemApi.moveToWeek(item.id, item.weekStartDate), "Không hoàn tác được.");
+    });
+  }
+
+  // ─── Việc phụ ───────────────────────────────────────────────────────────
+  async function addSide(name: string) {
+    if (preview) {
+      setSides((list) => [...list, { id: localId(), name, isDone: false }]);
+      return;
+    }
+    const created = await remote(() => sideTaskApi.create(name), "Không thêm được việc phụ.");
+    if (created) setSides((list) => [...list, created]);
+  }
+
+  async function finishSide(side: SideItem) {
+    setSides((list) => list.filter((item) => item.id !== side.id));
+    const ok = await remote(() => sideTaskApi.completeAndRemove(side.id), "Không gỡ được việc phụ.");
+    if (ok === false) {
+      setSides((list) => [...list, side]);
+      return;
+    }
+    flash(`Xong "${side.name}"`, () => void addSide(side.name));
+  }
+
+  // ─── Ghi chú ────────────────────────────────────────────────────────────
+  async function createNote(seed?: NoteData) {
+    const title = seed?.title ?? "";
+    const content = seed?.content ?? "";
+    const color = seed?.color ?? "stone:Ý tưởng:📝";
+    let created: NoteData | false;
+    if (preview) created = { id: localId(), title, content, color, updatedAt: new Date().toISOString() };
+    else created = await remote(() => noteApi.create(title, content, color), "Không tạo được ghi chú.");
+    if (!created) return;
+    const note = created;
+    setNotes((list) => [note, ...list]);
+    if (!seed) setPanel({ kind: "notes", noteId: note.id });
+  }
+
+  async function saveNote(note: NoteData, changes: { title: string; content: string; color: string }) {
     if (preview) {
       setNotes((list) =>
-        list.map((note) => (note.id === noteId ? { ...note, title: noteTitle, content: noteBody } : note))
+        list.map((item) => (item.id === note.id ? { ...item, ...changes, updatedAt: new Date().toISOString() } : item))
       );
       return;
     }
-    try {
-      const saved = await noteApi.update(noteId, { title: noteTitle, content: noteBody });
-      setNotes((list) => list.map((note) => (note.id === noteId ? saved : note)));
-    } catch {
-      setError("Không lưu được ghi chú.");
-    }
+    const saved = await remote(() => noteApi.update(note.id, changes), "Không lưu được ghi chú.");
+    if (saved) setNotes((list) => list.map((item) => (item.id === note.id ? saved : item)));
   }
 
-  function openRoom(id: string) {
-    setPanel("room");
-    setSelected(id);
-    sceneRef.current?.focus(id);
+  async function deleteNote(note: NoteData) {
+    setNotes((list) => list.filter((item) => item.id !== note.id));
+    setPanel({ kind: "notes", noteId: null });
+    const ok = await remote(() => noteApi.delete(note.id), "Không xoá được ghi chú.");
+    if (ok === false) {
+      setNotes((list) => [note, ...list]);
+      return;
+    }
+    flash(`Đã xoá ghi chú "${note.title || "Không tiêu đề"}"`, () => void createNote(note));
+  }
+
+  // ─── Tài liệu ───────────────────────────────────────────────────────────
+  async function addResource(draft: ResourceDraft) {
+    if (preview) {
+      setResources((list) => [...list, { id: localId(), ...draft }]);
+      return;
+    }
+    const created = await remote(
+      () => resourceApi.create(draft.title, draft.link, draft.description, draft.taskGroupId),
+      "Không thêm được tài liệu."
+    );
+    if (created) setResources((list) => [...list, created]);
+  }
+
+  async function deleteResource(item: ResourceApiData) {
+    setResources((list) => list.filter((row) => row.id !== item.id));
+    const ok = await remote(() => resourceApi.delete(item.id), "Không xoá được tài liệu.");
+    if (ok === false) {
+      setResources((list) => [...list, item]);
+      return;
+    }
+    flash(`Đã xoá tài liệu "${item.title}"`, () => void addResource(item));
   }
 
   const hoverName =
     hover?.kind === "room"
       ? rooms.find((room) => room.id === hover.id)?.name
       : hover?.kind === "notes"
-        ? "Sổ tay"
-        : hover?.kind === "side"
-          ? sides.find((side) => side.id === hover.id)?.name
-          : null;
+        ? `Sổ tay · ${notes.length} ghi chú`
+        : hover?.kind === "resources"
+          ? `Kệ sách · ${resources.length} tài liệu`
+          : hover?.kind === "side"
+            ? (sides.find((side) => side.id === hover.id)?.name ?? `Hàng rào · ${sides.length} việc phụ`)
+            : null;
 
   return (
     <div className="garden">
@@ -438,6 +517,12 @@ export default function GardenApp() {
       <div className="garden-dock">
         {preview && <p className="garden-banner">Bản xem thử. Đăng nhập để thấy việc thật trong Firestore.</p>}
         {error && <p className="garden-error">{error}</p>}
+        {showHelp && (
+          <p className="garden-hint">
+            Kéo để xoay, cuộn để lại gần. Bấm con vật hoặc căn nhà để mở việc tuần của đầu việc đó. Giữa sân, quanh cây đèn, có sổ tay, kệ
+            sách và hàng rào chim việc phụ. Phím 1–9 mở từng căn, N ghi chú, P việc phụ, T tài liệu, Esc đóng.
+          </p>
+        )}
         <div className="garden-dots" aria-label="Các căn trong vườn">
           {rooms.map((room, index) => (
             <button
@@ -451,9 +536,20 @@ export default function GardenApp() {
             />
           ))}
         </div>
-        <p className="garden-hint">
-          Kéo để xoay, cuộn để lại gần. Bấm con vật để mở việc tuần. Chim trên hàng rào là việc phụ. Quyển sổ bên trái là ghi chú. Phím 1–9, Esc.
-        </p>
+        <nav className="garden-places" aria-label="Sổ tay, việc phụ, tài liệu">
+          <button type="button" aria-pressed={panel?.kind === "notes"} onClick={() => setPanel({ kind: "notes", noteId: null })}>
+            Ghi chú <span>{notes.length}</span>
+          </button>
+          <button type="button" aria-pressed={panel?.kind === "side"} onClick={() => setPanel({ kind: "side", id: null })}>
+            Việc phụ <span>{sides.length}</span>
+          </button>
+          <button type="button" aria-pressed={panel?.kind === "resources"} onClick={() => setPanel({ kind: "resources" })}>
+            Tài liệu <span>{resources.length}</span>
+          </button>
+          <button type="button" className="help" aria-pressed={showHelp} aria-label="Hướng dẫn" onClick={() => setShowHelp((v) => !v)}>
+            ?
+          </button>
+        </nav>
       </div>
 
       {hover && hoverName && (
@@ -462,103 +558,65 @@ export default function GardenApp() {
         </div>
       )}
 
+      {toast && (
+        <div className="garden-toast" role="status" key={toast.key}>
+          <span>{toast.text}</span>
+          {toast.undo && (
+            <button
+              type="button"
+              onClick={() => {
+                toast.undo?.();
+                setToast(null);
+              }}
+            >
+              Hoàn tác
+            </button>
+          )}
+        </div>
+      )}
+
       {panel && (
         <aside className="garden-panel" aria-label="Chi tiết">
-          <button className="garden-text-btn quiet" type="button" onClick={() => setPanel(null)}>
-            Đóng
+          <button className="garden-close" type="button" aria-label="Đóng" onClick={closePanel}>
+            ×
           </button>
-          {panel === "room" && current && (
-            <>
-              <p className="garden-kicker">
-                {speciesLabel(current.species)}
-                {current.archived ? " · đang cất" : ""}
-              </p>
-              <h2>{current.name}</h2>
-              <p className="garden-sub">
-                {current.mood === "work"
-                  ? "Đang đi lại, vì tuần này còn việc dở."
-                  : current.mood === "wait"
-                    ? "Đang ngồi chờ, vì chưa việc nào được bắt đầu."
-                    : "Đang ngủ. Tuần này trống hoặc đã xong."}
-              </p>
-              {tasks.length === 0 && <p className="garden-sub">Chưa có việc trong tuần này.</p>}
-              {tasks.map((task) => (
-                <button key={task.id} className="garden-task" type="button" onClick={() => changeStatus(task)}>
-                  <span className={`garden-status ${task.status === "IN_PROGRESS" ? "doing" : task.status === "DONE" ? "done" : ""}`}>
-                    {STATUS_LABEL[task.status]}
-                  </span>
-                  <span>
-                    <p>{task.content}</p>
-                    {task.note ? <small>{task.note}</small> : null}
-                  </span>
-                </button>
-              ))}
-              <form className="garden-add" onSubmit={addTask}>
-                <input
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder="Thêm việc trong tuần"
-                  aria-label="Thêm việc trong tuần"
-                />
-                <button type="submit">Thêm</button>
-              </form>
-              {roomResources.length > 0 && (
-                <div className="garden-links">
-                  {roomResources.map((item) =>
-                    /^https?:\/\//.test(item.link) ? (
-                      <a key={item.id} href={item.link} target="_blank" rel="noreferrer">
-                        {item.title}
-                      </a>
-                    ) : (
-                      <span key={item.id}>{item.title}</span>
-                    )
-                  )}
-                </div>
-              )}
-            </>
+          {panel.kind === "room" && current && week && (
+            <RoomPanel
+              key={current.id}
+              room={current}
+              tasks={weekWorks(works, week, current.id)}
+              resources={resources.filter((item) => item.taskGroupId === current.id)}
+              onCycle={changeStatus}
+              onAdd={(content) => void addTask(current.id, content)}
+              onSave={saveTask}
+              onDelete={deleteTask}
+              onMoveNext={moveTaskNext}
+              onAddResource={addResource}
+              onDeleteResource={deleteResource}
+            />
           )}
-
-          {panel === "notes" && (
-            <>
-              <p className="garden-kicker">Sổ tay</p>
-              <h2>Ghi chú</h2>
-              {notes.map((note) => (
-                <button
-                  key={note.id}
-                  className="garden-note"
-                  type="button"
-                  onClick={() => setNoteId(note.id)}
-                  aria-pressed={noteId === note.id}
-                >
-                  <p>{note.title || "Không tiêu đề"}</p>
-                  <small>{noteTag(note.color)}</small>
-                </button>
-              ))}
-              {noteId && (
-                <form
-                  className="garden-note-edit"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void saveNote();
-                  }}
-                >
-                  <input value={noteTitle} onChange={(event) => setNoteTitle(event.target.value)} aria-label="Tiêu đề ghi chú" />
-                  <textarea rows={8} value={noteBody} onChange={(event) => setNoteBody(event.target.value)} aria-label="Nội dung ghi chú" />
-                  <button type="submit">Lưu ghi chú</button>
-                </form>
-              )}
-            </>
+          {panel.kind === "room" && !current && <p className="garden-empty">Căn này không có trong tuần đang xem.</p>}
+          {panel.kind === "notes" && (
+            <NotesPanel
+              notes={notes}
+              openId={panel.noteId}
+              onOpen={(noteId) => setPanel({ kind: "notes", noteId })}
+              onCreate={() => void createNote()}
+              onSave={saveNote}
+              onDelete={deleteNote}
+            />
           )}
-
-          {panel === "side" && currentSide && (
-            <>
-              <p className="garden-kicker">Việc phụ</p>
-              <h2>{currentSide.name}</h2>
-              <p className="garden-sub">Xong thì gỡ khỏi hàng rào. Việc phụ đã xong không giữ lại trong danh sách.</p>
-              <button className="garden-text-btn" type="button" onClick={() => finishSide(currentSide.id)}>
-                Xong, gỡ khỏi danh sách
-              </button>
-            </>
+          {panel.kind === "side" && (
+            <SidePanel sides={sides} highlightId={panel.id} onAdd={addSide} onFinish={finishSide} />
+          )}
+          {panel.kind === "resources" && (
+            <ResourcesPanel
+              resources={resources}
+              groups={groups}
+              onAdd={addResource}
+              onDelete={deleteResource}
+              onOpenRoom={openRoom}
+            />
           )}
         </aside>
       )}
