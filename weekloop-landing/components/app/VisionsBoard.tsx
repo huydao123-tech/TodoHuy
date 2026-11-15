@@ -12,8 +12,9 @@ import {
   parseVisionDraft,
   sortVisions,
   unassignedGroups,
+  excludedWeeksForGroup,
+  visiblePlannerTasks,
   visionOwningGroup,
-  workItemsByWeek,
   type VisionDraft,
   type VisionRecord,
   type VisionStatus,
@@ -21,36 +22,52 @@ import {
 
 const GROUP_COLORS = ["#16A34A", "#7C3AED", "#D97706", "#2563EB", "#DC2626", "#0D9488"];
 
-function progressText(done: number, total: number, isVietnamese: boolean): string {
-  if (total === 0) return isVietnamese ? "Chưa có việc" : "No tasks yet";
-  return isVietnamese ? `${done}/${total} việc xong` : `${done}/${total} done`;
+function progressText(total: number, isVietnamese: boolean): string {
+  if (total === 0) return isVietnamese ? "Không có việc đang mở" : "No open tasks";
+  return isVietnamese ? `${total} việc đang mở` : `${total} open tasks`;
 }
 
 function horizonText(value: string, isVietnamese: boolean): string {
   return formatHorizonDate(value, isVietnamese ? "vi-VN" : "en-GB") || value;
 }
 
-function countTasks(groupIds: string[], workItemsMap: Record<string, WorkItemData[]>): { done: number; total: number } {
-  let done = 0;
-  let total = 0;
-  for (const id of groupIds) {
-    for (const week of workItemsByWeek(id, workItemsMap)) {
-      total += week.items.length;
-      done += week.items.filter((item) => item.status === "DONE").length;
-    }
-  }
-  return { done, total };
+function openTasksForGroup(
+  groupId: string,
+  workItemsMap: Record<string, WorkItemData[]>,
+  viewOffset: number,
+  excludedByWeek: Record<number, (string | number)[]>,
+) {
+  return visiblePlannerTasks(groupId, workItemsMap, {
+    viewOffset,
+    excludedWeeks: excludedWeeksForGroup(groupId, excludedByWeek),
+  });
+}
+
+function countOpenTasks(
+  groupIds: string[],
+  workItemsMap: Record<string, WorkItemData[]>,
+  viewOffset: number,
+  excludedByWeek: Record<number, (string | number)[]>,
+): number {
+  return groupIds.reduce(
+    (total, id) => total + openTasksForGroup(id, workItemsMap, viewOffset, excludedByWeek).reduce((sum, week) => sum + week.items.length, 0),
+    0,
+  );
 }
 
 function GroupTasks({
   groupId,
   workItemsMap,
+  viewOffset,
+  excludedByWeek,
 }: {
   groupId: string;
   workItemsMap: Record<string, WorkItemData[]>;
+  viewOffset: number;
+  excludedByWeek: Record<number, (string | number)[]>;
 }) {
   const { t } = useLanguage();
-  const weeks = workItemsByWeek(groupId, workItemsMap);
+  const weeks = openTasksForGroup(groupId, workItemsMap, viewOffset, excludedByWeek);
   if (weeks.length === 0) return <p className="vision-empty-copy">{t.noTasksInGroup}</p>;
   const labels: Record<WorkItemStatus, string> = {
     TODO: t.todoStatus,
@@ -150,6 +167,8 @@ function VisionSection({
   groups,
   goalsMap,
   workItemsMap,
+  viewOffset,
+  excludedByWeek,
   attachOpen,
   createOpen,
   onToggleAttach,
@@ -167,6 +186,8 @@ function VisionSection({
   groups: TaskGroup[];
   goalsMap: Record<string, string>;
   workItemsMap: Record<string, WorkItemData[]>;
+  viewOffset: number;
+  excludedByWeek: Record<number, (string | number)[]>;
   attachOpen: boolean;
   createOpen: boolean;
   onToggleAttach: () => void;
@@ -181,7 +202,12 @@ function VisionSection({
 }) {
   const { t, isVietnamese } = useLanguage();
   const linked = groupsInVision(vision, groups);
-  const progress = countTasks(linked.map((group) => String(group.id)), workItemsMap);
+  const progress = countOpenTasks(
+    linked.map((group) => String(group.id)),
+    workItemsMap,
+    viewOffset,
+    excludedByWeek,
+  );
   const candidates = groups.filter((group) => !vision.taskGroupIds.includes(String(group.id)) && !String(group.id).startsWith("temp-"));
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(vision.title);
@@ -301,7 +327,7 @@ function VisionSection({
               {vision.outcome ? <p className="vision-outcome">{vision.outcome}</p> : null}
               <p className="vision-meta">
                 {vision.horizon ? <span>{horizonText(vision.horizon, isVietnamese)}</span> : null}
-                <span>{progressText(progress.done, progress.total, isVietnamese)}</span>
+                <span>{progressText(progress, isVietnamese)}</span>
               </p>
             </>
           )}
@@ -344,7 +370,7 @@ function VisionSection({
               <ul className="vision-group-stack">
                 {linked.map((group) => {
                   const goal = goalsMap[`${group.id}:0`] ?? "";
-                  const groupProgress = countTasks([String(group.id)], workItemsMap);
+                  const groupProgress = countOpenTasks([String(group.id)], workItemsMap, viewOffset, excludedByWeek);
                   return (
                     <li key={group.id} className="vision-group-block">
                       <div className="vision-group-head">
@@ -352,10 +378,8 @@ function VisionSection({
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="vision-group-name">
                             <span>{group.name}</span>
-                            {groupProgress.total > 0 && (
-                              <span className="vision-count">
-                                {groupProgress.done}/{groupProgress.total}
-                              </span>
+                            {groupProgress > 0 && (
+                              <span className="vision-count">{groupProgress}</span>
                             )}
                           </div>
                           {goal ? <p className="vision-goal">{goal}</p> : null}
@@ -371,7 +395,12 @@ function VisionSection({
                           {t.detachGroup}
                         </button>
                       </div>
-                      <GroupTasks groupId={String(group.id)} workItemsMap={workItemsMap} />
+                      <GroupTasks
+                        groupId={String(group.id)}
+                        workItemsMap={workItemsMap}
+                        viewOffset={viewOffset}
+                        excludedByWeek={excludedByWeek}
+                      />
                     </li>
                   );
                 })}
@@ -528,6 +557,8 @@ export default function VisionsBoard({
   groups,
   goalsMap,
   workItemsMap,
+  viewOffset,
+  excludedByWeek,
   manageRequest,
   onCreateVision,
   onUpdateVision,
@@ -542,6 +573,8 @@ export default function VisionsBoard({
   groups: TaskGroup[];
   goalsMap: Record<string, string>;
   workItemsMap: Record<string, WorkItemData[]>;
+  viewOffset: number;
+  excludedByWeek: Record<number, (string | number)[]>;
   manageRequest: { id: string; nonce: number } | null;
   onCreateVision: (draft: VisionDraft) => Promise<string>;
   onUpdateVision: (id: string, patch: Partial<Pick<VisionRecord, "title" | "outcome" | "horizon" | "status">>) => Promise<void>;
@@ -715,6 +748,8 @@ export default function VisionsBoard({
             groups={groups}
             goalsMap={goalsMap}
             workItemsMap={workItemsMap}
+            viewOffset={viewOffset}
+            excludedByWeek={excludedByWeek}
             attachOpen={attachId === vision.id}
             createOpen={createId === vision.id}
             onToggleAttach={() => {

@@ -10,6 +10,7 @@ import {
   stripGroupFromVisions,
   unassignedGroups,
   visionOwningGroup,
+  visiblePlannerTasks,
   weekProgress,
   workItemsByWeek,
 } from "../lib/visions.ts";
@@ -46,6 +47,30 @@ test("a vision draft needs a title and stores the horizon as a real date", () =>
   }
   const openEnded = parseVisionDraft({ title: "Du học Nhật", horizon: "   " });
   assert.equal(openEnded.ok && openEnded.draft.horizon, "");
+});
+
+test("the vision list keeps only open tasks from the three planner weeks", () => {
+  const map = {
+    "jp:-2": [{ content: "tuần đã khuất", status: "TODO" }],
+    "jp:-1": [
+      { content: "tuần trước còn làm", status: "TODO" },
+      { content: "tuần trước đã xong", status: "DONE" },
+    ],
+    "jp:0": [
+      { content: "tuần này", status: "IN_PROGRESS" },
+      { content: "tuần này đã xong", status: "DONE" },
+    ],
+    "jp:1": [{ content: "tuần sau đã gỡ khỏi planner", status: "TODO" }],
+    "jp:2": [{ content: "ngoài planner", status: "TODO" }],
+  };
+  const shown = visiblePlannerTasks("jp", map, { viewOffset: 0, excludedWeeks: [1] });
+  assert.deepEqual(
+    shown.map((week) => [week.weekOffset, week.items.map((item) => item.content)]),
+    [
+      [-1, ["tuần trước còn làm"]],
+      [0, ["tuần này"]],
+    ],
+  );
 });
 
 test("attaching a group exposes every saved week of its tasks", () => {

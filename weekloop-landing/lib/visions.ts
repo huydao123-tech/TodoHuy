@@ -236,6 +236,42 @@ export function workItemsByWeek<T>(
   return weeks;
 }
 
+/** Ba cột planner đang mở: tuần trước, tuần này, tuần sau so với mốc đang xem. */
+export function plannerWeekOffsets(viewOffset: number): number[] {
+  return [viewOffset - 1, viewOffset, viewOffset + 1];
+}
+
+export function excludedWeeksForGroup(
+  groupId: string | number,
+  excludedByWeek: Record<number, readonly (string | number)[] | undefined>,
+): number[] {
+  const id = String(groupId);
+  return Object.entries(excludedByWeek)
+    .filter(([, ids]) => (ids ?? []).some((item) => String(item) === id))
+    .map(([offset]) => Number(offset))
+    .filter((offset) => Number.isInteger(offset));
+}
+
+/**
+ * Việc còn trên planner: chỉ 3 tuần đang mở, bỏ việc đã xong và tuần đã gỡ nhóm khỏi planner.
+ * Việc đã xóa không còn trong workItemsMap nên không xuất hiện.
+ */
+export function visiblePlannerTasks<T extends { status: string }>(
+  groupId: string,
+  workItemsMap: Record<string, T[] | undefined>,
+  options: { viewOffset: number; excludedWeeks?: Iterable<number> },
+): GroupedWorkItems<T>[] {
+  const openWeeks = new Set(plannerWeekOffsets(options.viewOffset));
+  const excluded = new Set(options.excludedWeeks ?? []);
+  return workItemsByWeek(groupId, workItemsMap)
+    .filter((week) => openWeeks.has(week.weekOffset) && !excluded.has(week.weekOffset))
+    .map((week) => ({
+      weekOffset: week.weekOffset,
+      items: week.items.filter((item) => item.status !== "DONE"),
+    }))
+    .filter((week) => week.items.length > 0);
+}
+
 export function weekProgress(
   groupIds: string[],
   workItemsMap: Record<string, { status: string }[] | undefined>,

@@ -1595,6 +1595,8 @@ export default function Dashboard() {
               groups={taskGroups}
               goalsMap={goalsMap}
               workItemsMap={workItemsMap}
+              viewOffset={viewOffset}
+              excludedByWeek={excludedByWeek}
               manageRequest={manageRequest}
               onCreateVision={handleCreateVision}
               onUpdateVision={handleUpdateVision}
