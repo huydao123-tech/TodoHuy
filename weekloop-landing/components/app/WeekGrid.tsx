@@ -648,7 +648,8 @@ function WeekColumn({
       style={{
         display: "flex",
         flexDirection: "column",
-        borderRight: colOffset < 1 ? "1px solid var(--border)" : "none",
+        flex: 1,
+        borderRight: colOffset < 1 ? "1px solid var(--border-mid)" : "none",
         minWidth: 0,
       }}
     >
@@ -661,7 +662,7 @@ function WeekColumn({
           background: "var(--bg)",
           padding: "0.75rem 1rem 0.625rem",
           borderBottom: "2px solid",
-          borderBottomColor: isCenterCol ? "var(--accent)" : "var(--border)",
+          borderBottomColor: isCenterCol ? "var(--accent)" : "var(--border-mid)",
         }}
       >
         <p
@@ -1134,6 +1135,12 @@ export default function WeekGrid({
           grid-template-columns: repeat(3, 1fr);
           min-height: 100%;
           width: 100%;
+          align-items: stretch;
+        }
+        .week-col-wrapper {
+          display: flex;
+          flex-direction: column;
+          min-height: 100%;
         }
         @media (max-width: 767px) {
           .mobile-week-tabs {
