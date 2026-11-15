@@ -184,7 +184,7 @@ export default function BrainNotes() {
                 <b>{note.title || (isVietnamese ? "Chưa đặt tên" : "Untitled")}</b>
                 <time>{listDate(note)}</time>
               </span>
-              <span>{note.entries.map((entry) => entryPlainText(entry.content)).join(" ").replace(/\s+/g, " ").slice(0, 90)}</span>
+              <span className="brain-row-excerpt">{note.entries.map((entry) => entryPlainText(entry.content)).join(" ").replace(/\s+/g, " ").slice(0, 90)}</span>
             </button>
           ))}
           {activeTopic && topicNotes.length === 0 ? (
@@ -248,11 +248,11 @@ export default function BrainNotes() {
         .brain-list header strong { display: block; font-size: 1rem; }
         .brain-list header span, .brain-muted { color: var(--text-muted); font-size: 0.75rem; }
         .brain-row { flex-direction: column; align-items: stretch; gap: 0.25rem; padding: 0.625rem 0.75rem; }
-        .brain-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
-        .brain-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; font-weight: 560; }
-        .brain-row time, .brain-row span { color: var(--text-muted); font-size: 0.75rem; }
+        .brain-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; width: 100%; }
+        .brain-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; font-weight: 560; color: var(--text); }
+        .brain-row time, .brain-row-excerpt { color: var(--text-muted); font-size: 0.75rem; }
         .brain-row time { flex: none; font-variant-numeric: tabular-nums; }
-        .brain-row span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .brain-row-excerpt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .brain-empty { padding: 2rem 1.25rem; max-width: 46rem; }
         .brain-empty h2 { margin: 0 0 0.4rem; font-size: 1.25rem; }
         .brain-empty p, .brain-error { color: var(--text-muted); line-height: 1.5; }
