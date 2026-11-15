@@ -23,9 +23,9 @@ export default function LoginPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("huy@example.com");
-  const [password, setPassword] = useState("123456");
-  const [confirmPassword, setConfirmPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
