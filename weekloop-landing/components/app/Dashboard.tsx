@@ -2,6 +2,14 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { compareTaskGroups, moveTaskGroup } from "@/lib/taskGroupPriority";
+import {
+  attachGroupToVision,
+  detachGroupFromVision,
+  exclusiveVisions,
+  stripGroupFromVisions,
+  type VisionDraft,
+  type VisionRecord,
+} from "@/lib/visions";
 import Link from "next/link";
 import {
   getNavLabel,
@@ -26,6 +34,7 @@ import {
   resourceApi,
   workItemApi,
   weeklyGoalApi,
+  visionApi,
   removeAuthToken,
   requireAuthUser,
   authApi,
@@ -36,6 +45,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import WeekGrid from "@/components/app/WeekGrid";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
+import VisionsBoard, { VisionLens } from "@/components/app/VisionsBoard";
 import {
   CaretLeft,
   CaretRight,
@@ -53,6 +63,7 @@ import {
   PencilSimple,
   List,
   CheckSquare,
+  Flag,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -152,7 +163,7 @@ export default function Dashboard() {
   const { t, lang, setLang, isVietnamese } = useLanguage();
   const [authChecking, setAuthChecking] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<"planner" | "notes">("planner");
+  const [activeTab, setActiveTab] = useState<"planner" | "visions" | "notes">("planner");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileSidePanelOpen, setMobileSidePanelOpen] = useState(false);
 
@@ -165,6 +176,26 @@ export default function Dashboard() {
   const [viewOffset, setViewOffset] = useState(0);
   const [groups, setTaskGroups] = useState<TaskGroup[]>([]);
   const taskGroups = useMemo(() => [...groups].sort(compareTaskGroups), [groups]);
+  const [visions, setVisions] = useState<VisionRecord[]>([]);
+  const [visionsReady, setVisionsReady] = useState(false);
+  const [visionFilter, setVisionFilter] = useState("all");
+  const [manageRequest, setManageRequest] = useState<{ id: string; nonce: number } | null>(null);
+  const ownedVisions = useMemo(() => exclusiveVisions(visions), [visions]);
+  const selectedVisionId =
+    visionFilter !== "all" && ownedVisions.some((vision) => vision.id === visionFilter) ? visionFilter : "all";
+  const visibleGroups = useMemo(() => {
+    if (selectedVisionId === "all") return taskGroups;
+    const vision = ownedVisions.find((item) => item.id === selectedVisionId);
+    if (!vision) return taskGroups;
+    return taskGroups.filter((group) => vision.taskGroupIds.includes(String(group.id)));
+  }, [taskGroups, ownedVisions, selectedVisionId]);
+  const visionTitleByGroupId = useMemo(() => {
+    const titles = new Map<string, string>();
+    for (const vision of ownedVisions) {
+      for (const id of vision.taskGroupIds) titles.set(id, vision.title);
+    }
+    return titles;
+  }, [ownedVisions]);
   const [savingPriorityId, setSavingPriorityId] = useState<string | number | null>(null);
   const [archivedGroups, setArchivedGroups] = useState<ArchivedTaskGroup[]>([]);
   const [sideTasks, setSideTasks] = useState<SideTaskData[]>([]);
@@ -303,6 +334,30 @@ export default function Dashboard() {
     };
   }, [authChecking, isVietnamese]);
 
+  useEffect(() => {
+    if (authChecking) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    visionApi.subscribe((list) => {
+      if (cancelled) return;
+      setVisions(list);
+      setVisionsReady(true);
+    }, () => {
+      if (cancelled) return;
+      setVisionsReady(true);
+      setToast({ text: isVietnamese ? "Không tải được tầm nhìn." : "Could not load visions." });
+    }).then((stop) => {
+      if (cancelled) stop();
+      else unsubscribe = stop;
+    }).catch(() => {
+      if (!cancelled) setVisionsReady(true);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [authChecking, isVietnamese]);
+
   const handleSoftDeleteGroup = useCallback((id: string | number, name?: string) => {
     setTaskGroups((prev) => {
       const target = prev.find((g) => g.id === id);
@@ -344,7 +399,9 @@ export default function Dashboard() {
 
   const handlePermanentDeleteGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => prev.filter((g) => g.id !== id));
+    setVisions((prev) => stripGroupFromVisions(prev, String(id)).next);
     taskGroupApi.permanentDelete(id).catch(() => {});
+    visionApi.removeGroupFromAll(String(id)).catch(() => {});
   }, []);
 
   // ─── BỎ ĐẦU VIỆC KHỎI MỘT TUẦN CỤ THỂ (KHÔNG VÀO THÙNG RÁC) ────────────────
@@ -594,6 +651,105 @@ export default function Dashboard() {
         prev.map((g) => (g.id === tempId ? { ...g, id: created.id } : g))
       );
     } catch {}
+  };
+
+  const handleCreateVision = async (draft: VisionDraft) => {
+    const displayOrder = Math.max(0, ...visions.map((vision) => vision.displayOrder)) + 1;
+    try {
+      const created = await visionApi.create({ ...draft, displayOrder });
+      setVisions((prev) => (prev.some((vision) => vision.id === created.id) ? prev : [...prev, created]));
+      return created.id;
+    } catch (error) {
+      setToast({ text: t.couldNotSaveVision });
+      throw error;
+    }
+  };
+
+  const handleUpdateVision = async (
+    id: string,
+    patch: Partial<Pick<VisionRecord, "title" | "outcome" | "horizon" | "status">>,
+  ) => {
+    const previous = visions;
+    setVisions((prev) => prev.map((vision) => (vision.id === id ? { ...vision, ...patch } : vision)));
+    try {
+      await visionApi.update(id, patch);
+    } catch (error) {
+      setVisions(previous);
+      setToast({ text: t.couldNotSaveVision });
+      throw error;
+    }
+  };
+
+  const handleDeleteVision = async (id: string) => {
+    const previous = visions;
+    setVisions((prev) => prev.filter((vision) => vision.id !== id));
+    if (visionFilter === id) setVisionFilter("all");
+    try {
+      await visionApi.remove(id);
+    } catch (error) {
+      setVisions(previous);
+      setToast({ text: t.couldNotSaveVision });
+      throw error;
+    }
+  };
+
+  const handleAttachGroup = async (visionId: string, groupId: string) => {
+    const previous = visions;
+    const result = attachGroupToVision(previous, visionId, groupId);
+    setVisions(exclusiveVisions(result.next));
+    try {
+      await visionApi.attachGroup(visionId, groupId);
+      if (result.movedFromId) {
+        const from = previous.find((vision) => vision.id === result.movedFromId);
+        if (from) setToast({ text: t.movedGroup.replace("{name}", from.title) });
+      }
+    } catch (error) {
+      setVisions(previous);
+      setToast({ text: t.couldNotSaveVision });
+      throw error;
+    }
+  };
+
+  const handleDetachGroup = async (visionId: string, groupId: string) => {
+    const previous = visions;
+    setVisions(detachGroupFromVision(previous, visionId, groupId).next);
+    try {
+      await visionApi.detachGroup(visionId, groupId);
+    } catch (error) {
+      setVisions(previous);
+      setToast({ text: t.couldNotSaveVision });
+      throw error;
+    }
+  };
+
+  const handleCreateGroupInVision = async (visionId: string, name: string, color: string) => {
+    const tempId = `temp-${Date.now()}`;
+    const displayOrder = Math.max(0, ...taskGroups.map((group) => group.displayOrder ?? 0)) + 1;
+    setTaskGroups((prev) => [...prev, { id: tempId, name, color, displayOrder }]);
+    let createdId = "";
+    try {
+      const created = await taskGroupApi.create(name, "MAIN", displayOrder, color);
+      createdId = created.id;
+      setTaskGroups((prev) => prev.map((group) => (group.id === tempId ? { ...group, id: created.id } : group)));
+    } catch (error) {
+      setTaskGroups((prev) => prev.filter((group) => group.id !== tempId));
+      setToast({ text: isVietnamese ? "Không tạo được nhóm việc." : "Could not create the group." });
+      throw error;
+    }
+
+    const previous = visions;
+    setVisions((prev) => exclusiveVisions(attachGroupToVision(prev, visionId, createdId).next));
+    try {
+      await visionApi.attachGroup(visionId, createdId);
+    } catch (error) {
+      setVisions(previous);
+      setToast({
+        text: isVietnamese
+          ? "Đã tạo nhóm việc nhưng chưa gắn được vào tầm nhìn."
+          : "The group was created, but it could not be attached.",
+      });
+      throw error;
+    }
   };
 
   const handleCreateResource = async (e: React.FormEvent) => {
@@ -997,6 +1153,16 @@ export default function Dashboard() {
               }}
             />
             <SideNavItem
+              icon={<Flag size={15} />}
+              label={t.visions}
+              active={activeTab === "visions"}
+              badge={ownedVisions.length > 0 ? ownedVisions.length : null}
+              onClick={() => {
+                setActiveTab("visions");
+                setMobileSidebarOpen(false);
+              }}
+            />
+            <SideNavItem
               icon={<Notebook size={15} />}
               label={t.notes}
               active={activeTab === "notes"}
@@ -1108,6 +1274,21 @@ export default function Dashboard() {
                     >
                       {g.name}
                     </span>
+                    {visionTitleByGroupId.get(String(g.id)) && (
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: "0.05rem",
+                          fontSize: "0.65rem",
+                          color: "var(--text-faint)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {visionTitleByGroupId.get(String(g.id))}
+                      </span>
+                    )}
                     <select
                       aria-label={isVietnamese ? `Độ ưu tiên của ${g.name}` : `Priority for ${g.name}`}
                       value={taskGroups.findIndex((group) => group.id === g.id)}
@@ -1326,9 +1507,39 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : (
+                <>
+                <VisionLens visions={ownedVisions} value={selectedVisionId} onChange={setVisionFilter} />
+                {visibleGroups.length === 0 ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      justifyContent: "center",
+                      minHeight: 280,
+                      padding: "2rem 1.25rem",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <p style={{ margin: 0, maxWidth: 420, color: "var(--text-muted)", fontSize: "0.9rem", lineHeight: 1.5 }}>
+                      {t.visionFilterEmpty}
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ padding: "0.45rem 0.9rem", fontSize: "0.8125rem" }}
+                      onClick={() => {
+                        setActiveTab("visions");
+                        setManageRequest({ id: selectedVisionId, nonce: Date.now() });
+                      }}
+                    >
+                      {t.manageGroups}
+                    </button>
+                  </div>
+                ) : (
                 <WeekGrid
                   viewOffset={viewOffset}
-                  taskGroups={taskGroups}
+                  taskGroups={visibleGroups}
                   goalsMap={goalsMap}
                   workItemsMap={workItemsMap}
                   excludedByWeek={excludedByWeek}
@@ -1343,6 +1554,8 @@ export default function Dashboard() {
                   onMoveTaskToCurrentWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 0)}
                   onMoveTaskToNextWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 1)}
                 />
+                )}
+                </>
               )}
             </main>
 
@@ -1374,6 +1587,27 @@ export default function Dashboard() {
               />
             </div>
           </>
+        ) : activeTab === "visions" ? (
+          <main id="visions-view" style={{ flex: 1, overflowY: "auto" }}>
+            <VisionsBoard
+              visions={ownedVisions}
+              ready={visionsReady}
+              groups={taskGroups}
+              goalsMap={goalsMap}
+              workItemsMap={workItemsMap}
+              manageRequest={manageRequest}
+              onCreateVision={handleCreateVision}
+              onUpdateVision={handleUpdateVision}
+              onDeleteVision={handleDeleteVision}
+              onAttachGroup={handleAttachGroup}
+              onDetachGroup={handleDetachGroup}
+              onCreateGroup={handleCreateGroupInVision}
+              onViewWeek={(id) => {
+                setVisionFilter(id);
+                setActiveTab("planner");
+              }}
+            />
+          </main>
         ) : (
           <main id="notes-view" style={{ flex: 1, overflowY: "auto", display: "flex" }}>
             <NotesGallery />
@@ -2086,6 +2320,19 @@ export default function Dashboard() {
 
         <button
           type="button"
+          className={`mobile-bottom-tab ${activeTab === "visions" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("visions");
+            setMobileSidebarOpen(false);
+            setMobileSidePanelOpen(false);
+          }}
+        >
+          <Flag size={19} weight={activeTab === "visions" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <span>{t.visions}</span>
+        </button>
+
+        <button
+          type="button"
           className={`mobile-bottom-tab ${activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
           onClick={() => {
             setActiveTab("notes");
@@ -2281,6 +2528,12 @@ export default function Dashboard() {
             color: var(--accent);
             font-weight: 600;
           }
+          .mobile-bottom-tab span {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
           .bottom-bar-badge {
             position: absolute;
             top: -4px;
@@ -2295,7 +2548,7 @@ export default function Dashboard() {
             text-align: center;
             line-height: 1.2;
           }
-          #main-grid, #notes-view {
+          #main-grid, #notes-view, #visions-view {
             padding-bottom: 64px !important;
           }
           .desktop-only-btn {
