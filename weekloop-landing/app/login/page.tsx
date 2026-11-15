@@ -204,12 +204,13 @@ export default function LoginPage() {
 
   return (
     <main
+      className="login-root"
       style={{
         minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--bg-alt)",
+        background: "var(--bg)",
         padding: "1.5rem",
         position: "relative",
       }}

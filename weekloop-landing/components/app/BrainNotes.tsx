@@ -13,6 +13,19 @@ import { emptyNoteDoc, entryPlainText, formatEntryDate, linkHref, textMatches, t
 import { useLanguage } from "@/lib/languageContext";
 import { EntryEditor, noteColor, type NoteColor } from "./NoteEntryEditor";
 
+function listDate(note: BrainNoteData): string {
+  const iso = [...note.entries].sort((a, b) => b.date.localeCompare(a.date))[0]?.date || note.updatedAt.slice(0, 10);
+  const [year, month, day] = iso.split("-");
+  if (!year || !month || !day) return "";
+  return `${day}/${month}/${year}`;
+}
+
+function clockLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function BrainNotes() {
   const { isVietnamese } = useLanguage();
   const [modules, setModules] = useState<BrainModuleData[]>([]);
@@ -167,7 +180,10 @@ export default function BrainNotes() {
                 setMobilePane("editor");
               }}
             >
-              <b>{note.title || (isVietnamese ? "Chưa đặt tên" : "Untitled")}</b>
+              <span className="brain-row-top">
+                <b>{note.title || (isVietnamese ? "Chưa đặt tên" : "Untitled")}</b>
+                <time>{listDate(note)}</time>
+              </span>
               <span>{note.entries.map((entry) => entryPlainText(entry.content)).join(" ").replace(/\s+/g, " ").slice(0, 90)}</span>
             </button>
           ))}
@@ -183,6 +199,8 @@ export default function BrainNotes() {
             key={activeBrain.id}
             title={activeBrain.title}
             entries={activeBrain.entries}
+            crumb={[activeModule?.name, activeTopic?.name].filter(Boolean).join(" / ")}
+            savedAt={activeBrain.updatedAt}
             backLabel={activeTopic?.name || ""}
             onBack={() => setMobilePane("list")}
             onSave={(title, entries) => brainApi.updateNote(activeBrain.id, title, entries)}
@@ -205,38 +223,46 @@ export default function BrainNotes() {
       </section>
 
       <style>{`
-        .brain { display: grid; grid-template-columns: 240px 280px minmax(0, 1fr); width: 100%; height: 100%; min-height: 0; background: var(--bg); color: var(--text); }
-        .brain-pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        .brain-editor { border-right: none; }
-        .brain-scroll { overflow: auto; padding: 0.35rem; }
-        .brain-search, .brain-add, .brain-module button, .brain-row { font: inherit; color: var(--text); }
-        .brain-search { display: flex; align-items: center; gap: 0.4rem; margin: 0.75rem; padding: 0.45rem 0.6rem; border: 1px solid var(--border-mid); border-radius: var(--radius); background: var(--input-bg); color: var(--text-muted); }
+        .brain { display: grid; grid-template-columns: 16rem 20rem minmax(0, 1fr); width: 100%; height: 100%; min-height: 0; background: var(--bg); color: var(--text); }
+        .brain-pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--card-bg); border-right: 1px solid var(--border-mid); }
+        .brain-editor { border-right: none; background: var(--bg); }
+        .brain-scroll { overflow: auto; padding: 0.35rem 0.75rem 1rem; }
+        .brain-search, .brain-add, .brain-outline, .brain-module button, .brain-row { font: inherit; color: var(--text); }
+        .brain-search { display: flex; align-items: center; gap: 0.5rem; height: 2.5rem; margin: 0.75rem; padding: 0 0.75rem; border: 1px solid var(--border-mid); border-radius: 12px; background: var(--card-bg); color: var(--text-muted); }
         .brain-search input { border: none; outline: none; width: 100%; background: transparent; color: var(--text); font: inherit; font-size: 0.875rem; }
-        .brain-add { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0 0.75rem 0.5rem; border: none; background: var(--accent); color: #fff; border-radius: var(--radius-pill); padding: 0.35rem 0.7rem; font-size: 0.8rem; cursor: pointer; }
-        .brain-module header, .brain-list header { display: flex; align-items: center; gap: 0.35rem; }
-        .brain-module header { padding: 0.45rem 0.45rem 0.15rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 650; }
+        .brain-add, .brain-outline { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; height: 2.25rem; margin: 0; border-radius: 10px; padding: 0 0.75rem; font-size: 0.875rem; font-weight: 560; cursor: pointer; }
+        .brain-pane > .brain-add { margin: 0.25rem 0.75rem 0.5rem; align-self: flex-start; background: transparent; color: var(--text-muted); }
+        .brain-list header .brain-add { background: var(--accent); color: #fff; }
+        .brain-add { border: none; background: var(--accent); color: #fff; }
+        .brain-outline { border: 1px solid var(--border-mid); background: var(--card-bg); color: var(--text); }
+        .brain-module header, .brain-list header { display: flex; align-items: center; gap: 0.5rem; }
+        .brain-module header { height: 2.5rem; padding: 0 0.75rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
         .brain-module header span, .brain-list header div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .brain-module header button, .brain-back { border: none; background: none; color: var(--text-faint); cursor: pointer; }
-        .brain-module > button, .brain-row { display: flex; width: 100%; text-align: left; border: none; background: none; border-radius: var(--radius); cursor: pointer; }
-        .brain-module > button { justify-content: space-between; gap: 0.5rem; padding: 0.38rem 0.55rem 0.38rem 1.4rem; font-size: 0.84rem; }
-        .brain-module > button em { font-style: normal; color: var(--text-faint); font-size: 0.72rem; }
-        .brain-module > button.is-on, .brain-row.is-on { background: var(--accent-bg); color: var(--accent-dark); }
-        .brain-list header { justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border); }
-        .brain-list header strong, .brain-list header span { display: block; }
+        .brain-module header button, .brain-back, .brain-delete { border: none; background: none; color: var(--text-muted); cursor: pointer; }
+        .brain-delete { color: #b91c1c; }
+        .brain-module > button, .brain-row { display: flex; width: 100%; text-align: left; border: none; background: none; border-radius: 12px; cursor: pointer; }
+        .brain-module > button { align-items: center; justify-content: space-between; gap: 0.5rem; height: 2.5rem; padding: 0 0.75rem; font-size: 0.875rem; color: var(--text); }
+        .brain-module > button em { font-style: normal; color: var(--text-muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+        .brain-module > button.is-on, .brain-row.is-on { background: var(--bg-alt); color: var(--text); font-weight: 560; }
+        .brain-list header { justify-content: space-between; height: 4rem; padding: 0 1rem; border-bottom: 1px solid var(--border); }
+        .brain-list header strong { display: block; font-size: 1rem; }
         .brain-list header span, .brain-muted { color: var(--text-muted); font-size: 0.75rem; }
-        .brain-row { flex-direction: column; gap: 0.15rem; padding: 0.55rem 0.65rem; }
-        .brain-row b { font-size: 0.86rem; font-weight: 640; }
-        .brain-row span { color: var(--text-muted); font-size: 0.75rem; }
+        .brain-row { flex-direction: column; align-items: stretch; gap: 0.25rem; padding: 0.625rem 0.75rem; }
+        .brain-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+        .brain-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; font-weight: 560; }
+        .brain-row time, .brain-row span { color: var(--text-muted); font-size: 0.75rem; }
+        .brain-row time { flex: none; font-variant-numeric: tabular-nums; }
+        .brain-row span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .brain-empty { padding: 2rem 1.25rem; max-width: 46rem; }
         .brain-empty h2 { margin: 0 0 0.4rem; font-size: 1.25rem; }
         .brain-empty p, .brain-error { color: var(--text-muted); line-height: 1.5; }
         .brain-error { color: #b91c1c; padding: 0 0.75rem; }
         .brain-back { display: none; }
         .brain-editor form { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-        .brain-title-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1.1rem 0.35rem; }
-        .brain-editor input { width: 100%; border: none; background: transparent; color: var(--text); font: inherit; outline: none; font-size: 1.45rem; font-weight: 650; letter-spacing: -0.03em; }
-        .brain-title-row .brain-add { margin: 0.35rem 0 0; flex: none; }
-        .brain-tools { display: flex; align-items: center; gap: 0.2rem; flex-wrap: wrap; padding: 0.4rem 0.7rem; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 2; }
+        .brain-title-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.35rem 1.5rem 0.75rem; }
+        .brain-editor input { width: 100%; border: none; background: transparent; color: var(--text); font: inherit; outline: none; font-size: 1.5rem; font-weight: 650; letter-spacing: -0.03em; }
+        .brain-title-row .brain-outline { margin-top: 0.35rem; flex: none; }
+        .brain-tools { display: flex; align-items: center; gap: 0.2rem; flex-wrap: wrap; margin: 0 1.5rem; padding: 0.35rem 0.35rem; border: 1px solid var(--border-mid); border-bottom: none; border-radius: 16px 16px 0 0; background: var(--card-bg); position: sticky; top: 0; z-index: 2; }
         .brain-tools > button, .brain-menu > button { display: inline-flex; align-items: center; gap: 0.35rem; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 0.82rem; font-weight: 600; border-radius: var(--radius); padding: 0.35rem 0.5rem; cursor: pointer; }
         .brain-tools > button:hover, .brain-menu > button:hover, .brain-menu > button[aria-expanded="true"] { background: var(--bg-alt); color: var(--text); }
         .brain-tools > button:disabled { opacity: 0.45; cursor: default; }
@@ -254,8 +280,9 @@ export default function BrainNotes() {
         .brain-link button { border: 1px solid var(--border-mid); background: var(--card-bg); color: var(--text); border-radius: var(--radius); font: inherit; font-size: 0.8rem; padding: 0.35rem 0.6rem; cursor: pointer; }
         .brain-link .is-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         .brain-link-error { width: 100%; margin: 0; color: #b91c1c; font-size: 0.78rem; }
-        .brain-entries { overflow: auto; padding: 0.9rem 1.1rem 1.5rem; display: grid; gap: 0.9rem; }
-        .brain-entry { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 0.95rem 1.05rem 1.05rem; }
+        .brain-entries { overflow: auto; padding: 0 1.5rem 2rem; display: grid; gap: 0; }
+        .brain-entry { background: var(--card-bg); border: 1px solid var(--border-mid); border-top: none; padding: 1.15rem 1.25rem 1.35rem; }
+        .brain-entry:last-child { border-radius: 0 0 16px 16px; }
         .brain-entry h3 { margin: 0 0 0.35rem; font-size: 1rem; font-weight: 650; }
         .note-body { font-size: 1rem; line-height: 1.75rem; color: var(--text); outline: none; min-height: 4.5rem; }
         .note-body > * + * { margin-top: 0.75rem; }
@@ -289,8 +316,9 @@ export default function BrainNotes() {
         [data-theme="dark"] .co-la { background: rgb(134 239 172 / 0.08); border-color: rgb(134 239 172 / 0.4); }
         [data-theme="dark"] .co-duong { background: rgb(147 197 253 / 0.08); border-color: rgb(147 197 253 / 0.4); }
         [data-theme="dark"] .co-hong { background: rgb(249 168 212 / 0.08); border-color: rgb(249 168 212 / 0.4); }
-        .brain-editor-bar { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.8rem; color: var(--text-faint); font-size: 0.75rem; }
-        .brain-editor-bar button { border: none; background: none; color: #b91c1c; cursor: pointer; font: inherit; }
+        .brain-editor-bar { display: flex; align-items: center; gap: 0.75rem; min-height: 4rem; padding: 0 1.5rem; color: var(--text-muted); font-size: 0.75rem; }
+        .brain-crumb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .brain-saved { margin-left: auto; flex: none; }
         @media (max-width: 800px) {
           .brain { grid-template-columns: 1fr; }
           .brain-pane { display: none; border-right: none; }
@@ -312,6 +340,8 @@ const NOTE_COLORS: Array<{ value: NoteColor; label: string }> = [
 function NoteEditor({
   title,
   entries,
+  crumb,
+  savedAt,
   backLabel,
   onBack,
   onSave,
@@ -319,6 +349,8 @@ function NoteEditor({
 }: {
   title: string;
   entries: BrainEntry[];
+  crumb: string;
+  savedAt: string;
   backLabel: string;
   onBack: () => void;
   onSave: (title: string, entries: BrainEntry[]) => Promise<void>;
@@ -328,6 +360,7 @@ function NoteEditor({
   const [draftTitle, setDraftTitle] = useState(title);
   const [drafts, setDrafts] = useState(() => [...entries].sort((a, b) => b.date.localeCompare(a.date)));
   const [status, setStatus] = useState("");
+  const savedLabel = savedAt && clockLabel(savedAt) ? (isVietnamese ? `Đã lưu lúc ${clockLabel(savedAt)}` : `Saved ${clockLabel(savedAt)}`) : "";
   const [menu, setMenu] = useState<"highlight" | "callout" | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
@@ -344,7 +377,10 @@ function NoteEditor({
     const timer = window.setTimeout(() => {
       setStatus(isVietnamese ? "Đang lưu..." : "Saving...");
       saveRef.current(draftTitle, drafts)
-        .then(() => setStatus(isVietnamese ? "Đã lưu" : "Saved"))
+        .then(() => {
+          const clock = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+          setStatus(isVietnamese ? `Đã lưu lúc ${clock}` : `Saved ${clock}`);
+        })
         .catch(() => setStatus(isVietnamese ? "Không lưu được" : "Could not save"));
     }, 700);
     return () => window.clearTimeout(timer);
@@ -375,8 +411,9 @@ function NoteEditor({
     <form onSubmit={(event) => event.preventDefault()}>
       <div className="brain-editor-bar">
         <button type="button" className="brain-back" onClick={onBack}>{backLabel ? `← ${backLabel}` : "←"}</button>
-        <span>{status}</span>
-        <button type="button" onClick={() => void onDelete()}>{isVietnamese ? "Xóa" : "Delete"}</button>
+        <span className="brain-crumb">{crumb}</span>
+        <span className="brain-saved">{status || savedLabel}</span>
+        <button type="button" className="brain-delete" onClick={() => void onDelete()}>{isVietnamese ? "Xóa" : "Delete"}</button>
       </div>
       <div className="brain-title-row">
         <input
@@ -385,7 +422,7 @@ function NoteEditor({
           placeholder={isVietnamese ? "Tiêu đề" : "Title"}
           aria-label={isVietnamese ? "Tiêu đề" : "Title"}
         />
-        <button type="button" className="brain-add" onClick={addDay}>
+        <button type="button" className="brain-outline" onClick={addDay}>
           <Plus size={14} weight="bold" />
           {isVietnamese ? "Thêm ngày" : "Add day"}
         </button>

@@ -92,30 +92,31 @@ function SideNavItem({
         alignItems: "center",
         justifyContent: "space-between",
         width: "100%",
-        background: active ? "var(--accent-bg)" : "none",
+        height: 40,
+        background: active ? "var(--bg-alt)" : "transparent",
         border: "none",
         cursor: "pointer",
-        padding: "0.45rem 0.625rem",
-        borderRadius: "var(--radius)",
+        padding: "0 0.75rem",
+        borderRadius: 12,
         textAlign: "left",
         transition: "background 0.14s ease",
       }}
       onMouseEnter={(e) => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = "var(--border)";
+        if (!active) (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
       }}
       onMouseLeave={(e) => {
         if (!active) (e.currentTarget as HTMLElement).style.background = "none";
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ color: active ? "var(--accent)" : "var(--text-faint)", display: "flex" }}>
+        <span style={{ color: active ? "var(--text)" : "var(--text-muted)", display: "flex" }}>
           {icon}
         </span>
         <span
           style={{
-            fontSize: "0.8125rem",
-            color: active ? "var(--accent)" : "var(--text-muted)",
-            fontWeight: active ? 580 : 400,
+            fontSize: "0.875rem",
+            color: active ? "var(--text)" : "var(--text-muted)",
+            fontWeight: active ? 560 : 450,
           }}
         >
           {label}
@@ -125,12 +126,11 @@ function SideNavItem({
       {badge !== undefined && badge !== null && (
         <span
           style={{
-            fontSize: "0.6875rem",
-            fontWeight: 600,
-            padding: "0.05rem 0.4rem",
-            borderRadius: "var(--radius-pill)",
-            background: active ? "var(--accent)" : "var(--border)",
-            color: active ? "#fff" : "var(--text-muted)",
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            fontVariantNumeric: "tabular-nums",
+            background: "transparent",
+            color: active ? "var(--text)" : "var(--text-muted)",
           }}
         >
           {badge}
@@ -844,6 +844,7 @@ export default function Dashboard() {
         background: "var(--bg)",
       }}
     >
+      <div className="sb-frame">
       {/* ─── TOP BAR ─────────────────────────────────────────────────────── */}
       <nav
         id="app-nav"
@@ -875,6 +876,7 @@ export default function Dashboard() {
           {/* Logo */}
           <Link
             href="/"
+            className="sb-lockup"
             style={{
               display: "flex",
               alignItems: "center",
@@ -1099,7 +1101,7 @@ export default function Dashboard() {
       </nav>
 
       {/* ─── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+      <div className="sb-stage" style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
         {/* Backdrop cho Mobile Sidebar Drawer */}
         {mobileSidebarOpen && (
           <div
@@ -1123,6 +1125,14 @@ export default function Dashboard() {
             overflowY: "auto",
           }}
         >
+          <div className="sb-brand">
+            <span className="sb-mark" aria-hidden>
+              <i />
+              <span />
+            </span>
+            WeekLoop
+          </div>
+
           {/* Header trong drawer điện thoại */}
           <div className="mobile-drawer-header">
             <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>{t.categoriesSection}</span>
@@ -1188,11 +1198,11 @@ export default function Dashboard() {
           <div style={{ padding: "0.35rem 0.75rem 0.75rem", flex: 1 }}>
             <p
               style={{
-                fontFamily: "var(--font-geist-mono), monospace",
-                fontSize: "0.5625rem",
+                fontSize: "0.75rem",
+                fontWeight: 560,
                 textTransform: "uppercase",
-                letterSpacing: "0.18em",
-                color: "var(--text-faint)",
+                letterSpacing: "0.04em",
+                color: "var(--text-muted)",
                 marginBottom: "0.45rem",
                 paddingLeft: "0.625rem",
               }}
@@ -1607,6 +1617,7 @@ export default function Dashboard() {
             <NotesGallery />
           </main>
         )}
+      </div>
       </div>
 
       {/* ─── TOAST ─────────────────────────────────────────────────────────── */}
