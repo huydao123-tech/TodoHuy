@@ -82,6 +82,8 @@ export interface Translations {
   visionOutcomePlaceholder: string;
   visionHorizonLabel: string;
   visionHorizonPlaceholder: string;
+  horizonInvalid: string;
+  noTasksInGroup: string;
   outcomeHint: string;
   visionGroupsLabel: string;
   attachGroup: string;
@@ -271,7 +273,9 @@ export const translations: Record<AppLanguage, Translations> = {
     visionOutcomeLabel: "Kết quả khi xong",
     visionOutcomePlaceholder: "Ví dụ: nhập học kỳ tháng 4/2027",
     visionHorizonLabel: "Mốc thời gian",
-    visionHorizonPlaceholder: "Ví dụ: tháng 4/2027",
+    visionHorizonPlaceholder: "Chọn ngày tháng năm",
+    horizonInvalid: "Hãy chọn một ngày hợp lệ.",
+    noTasksInGroup: "Nhóm này chưa có công việc.",
     outcomeHint: "Một câu về kết quả. Danh sách việc nằm ở nhóm việc bên dưới.",
     visionGroupsLabel: "Nhóm việc trong tầm nhìn này",
     attachGroup: "Gắn nhóm việc",
@@ -461,7 +465,9 @@ export const translations: Record<AppLanguage, Translations> = {
     visionOutcomeLabel: "Done looks like",
     visionOutcomePlaceholder: "Example: enrolled for April 2027",
     visionHorizonLabel: "Time horizon",
-    visionHorizonPlaceholder: "Example: April 2027",
+    visionHorizonPlaceholder: "Choose a date",
+    horizonInvalid: "Choose a valid date.",
+    noTasksInGroup: "This group has no tasks yet.",
     outcomeHint: "One sentence about the result. The task list lives in the groups below.",
     visionGroupsLabel: "Work groups in this vision",
     attachGroup: "Attach group",

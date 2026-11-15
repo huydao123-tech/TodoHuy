@@ -5,11 +5,13 @@ import {
   detachGroupFromVision,
   exclusiveVisions,
   groupsInVision,
+  normalizeHorizon,
   parseVisionDraft,
   stripGroupFromVisions,
   unassignedGroups,
   visionOwningGroup,
   weekProgress,
+  workItemsByWeek,
 } from "../lib/visions.ts";
 
 const japan = {
@@ -32,13 +34,30 @@ const health = {
   taskGroupIds: ["gym"],
 };
 
-test("a vision draft needs a title and trims the outcome", () => {
+test("a vision draft needs a title and stores the horizon as a real date", () => {
   assert.equal(parseVisionDraft({ title: "   " }).ok, false);
-  const parsed = parseVisionDraft({ title: "  Du học Nhật  ", outcome: "  nhập học  ", horizon: " 2027 " });
+  assert.equal(parseVisionDraft({ title: "Du học Nhật", horizon: "tháng 4/2027" }).ok, false);
+  assert.equal(parseVisionDraft({ title: "Du học Nhật", horizon: "2027-02-31" }).ok, false);
+  assert.equal(normalizeHorizon("2027-04-15"), "2027-04-15");
+  const parsed = parseVisionDraft({ title: "  Du học Nhật  ", outcome: "  nhập học  ", horizon: "2027-04-15" });
   assert.equal(parsed.ok, true);
   if (parsed.ok) {
-    assert.deepEqual(parsed.draft, { title: "Du học Nhật", outcome: "nhập học", horizon: "2027" });
+    assert.deepEqual(parsed.draft, { title: "Du học Nhật", outcome: "nhập học", horizon: "2027-04-15" });
   }
+  const openEnded = parseVisionDraft({ title: "Du học Nhật", horizon: "   " });
+  assert.equal(openEnded.ok && openEnded.draft.horizon, "");
+});
+
+test("attaching a group exposes every saved week of its tasks", () => {
+  const weeks = workItemsByWeek("jp", {
+    "jp:1": [{ content: "tuần sau", status: "TODO" }],
+    "jp:-1": [{ content: "tuần trước", status: "DONE" }],
+    "jp:0": [{ content: "tuần này", status: "TODO" }, { content: "thêm", status: "DONE" }],
+    "gym:0": [{ content: "nhóm khác", status: "TODO" }],
+    "jp:soon": [{ content: "không phải tuần", status: "TODO" }],
+  });
+  assert.deepEqual(weeks.map((week) => week.weekOffset), [-1, 0, 1]);
+  assert.deepEqual(weeks[1].items.map((item) => item.content), ["tuần này", "thêm"]);
 });
 
 test("attaching a group to a vision removes it from every other vision", () => {

@@ -22,7 +22,6 @@ export interface VisionDraft {
 
 const TITLE_MAX = 80;
 const OUTCOME_MAX = 180;
-const HORIZON_MAX = 40;
 
 const STATUS_RANK: Record<VisionStatus, number> = {
   active: 0,
@@ -48,19 +47,44 @@ export function normalizeTaskGroupIds(value: unknown): string[] {
   return ids;
 }
 
+/** Giá trị của input type="date": YYYY-MM-DD, và phải là một ngày có thật. */
+export function normalizeHorizon(value: unknown): string {
+  const text = String(value ?? "").trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+  return text;
+}
+
+export function formatHorizonDate(value: string, locale: string): string {
+  const iso = normalizeHorizon(value);
+  if (!iso) return "";
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "numeric", year: "numeric" }).format(
+    new Date(year, month - 1, day),
+  );
+}
+
 export function parseVisionDraft(input: {
   title: string;
   outcome?: string;
   horizon?: string;
-}): { ok: true; draft: VisionDraft } | { ok: false; error: "title" } {
+}): { ok: true; draft: VisionDraft } | { ok: false; error: "title" | "horizon" } {
   const title = input.title.trim().slice(0, TITLE_MAX);
   if (!title) return { ok: false, error: "title" };
+  const rawHorizon = (input.horizon ?? "").trim();
+  const horizon = normalizeHorizon(rawHorizon);
+  if (rawHorizon && !horizon) return { ok: false, error: "horizon" };
   return {
     ok: true,
     draft: {
       title,
       outcome: (input.outcome ?? "").trim().slice(0, OUTCOME_MAX),
-      horizon: (input.horizon ?? "").trim().slice(0, HORIZON_MAX),
+      horizon,
     },
   };
 }
@@ -188,6 +212,28 @@ export function visionOwningGroup<T extends { id: string; title: string; taskGro
 ): T | null {
   const gid = String(groupId);
   return visions.find((vision) => vision.taskGroupIds.includes(gid)) ?? null;
+}
+
+export interface GroupedWorkItems<T> {
+  weekOffset: number;
+  items: T[];
+}
+
+/** Mọi công việc của một nhóm, gồm tất cả các tuần đã lưu, tuần cũ đứng trước. */
+export function workItemsByWeek<T>(
+  groupId: string,
+  workItemsMap: Record<string, T[] | undefined>,
+): GroupedWorkItems<T>[] {
+  const prefix = `${groupId}:`;
+  const weeks: GroupedWorkItems<T>[] = [];
+  for (const [key, items] of Object.entries(workItemsMap)) {
+    if (!key.startsWith(prefix) || !items?.length) continue;
+    const offset = Number(key.slice(prefix.length));
+    if (!Number.isInteger(offset)) continue;
+    weeks.push({ weekOffset: offset, items });
+  }
+  weeks.sort((a, b) => a.weekOffset - b.weekOffset);
+  return weeks;
 }
 
 export function weekProgress(
