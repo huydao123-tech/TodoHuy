@@ -6,6 +6,7 @@ import {
   attachGroupToVision,
   detachGroupFromVision,
   exclusiveVisions,
+  groupsForVisionFilter,
   stripGroupFromVisions,
   type VisionDraft,
   type VisionRecord,
@@ -185,19 +186,10 @@ export default function Dashboard() {
   const ownedVisions = useMemo(() => exclusiveVisions(visions), [visions]);
   const selectedVisionId =
     visionFilter !== "all" && ownedVisions.some((vision) => vision.id === visionFilter) ? visionFilter : "all";
-  const visibleGroups = useMemo(() => {
-    if (selectedVisionId === "all") return taskGroups;
-    const vision = ownedVisions.find((item) => item.id === selectedVisionId);
-    if (!vision) return taskGroups;
-    return taskGroups.filter((group) => vision.taskGroupIds.includes(String(group.id)));
-  }, [taskGroups, ownedVisions, selectedVisionId]);
-  const visionTitleByGroupId = useMemo(() => {
-    const titles = new Map<string, string>();
-    for (const vision of ownedVisions) {
-      for (const id of vision.taskGroupIds) titles.set(id, vision.title);
-    }
-    return titles;
-  }, [ownedVisions]);
+  const visibleGroups = useMemo(
+    () => groupsForVisionFilter(taskGroups, ownedVisions, selectedVisionId),
+    [taskGroups, ownedVisions, selectedVisionId],
+  );
   const [savingPriorityId, setSavingPriorityId] = useState<string | number | null>(null);
   const [archivedGroups, setArchivedGroups] = useState<ArchivedTaskGroup[]>([]);
   const [sideTasks, setSideTasks] = useState<SideTaskData[]>([]);
@@ -1285,21 +1277,6 @@ export default function Dashboard() {
                     >
                       {g.name}
                     </span>
-                    {visionTitleByGroupId.get(String(g.id)) && (
-                      <span
-                        style={{
-                          display: "block",
-                          marginTop: "0.05rem",
-                          fontSize: "0.65rem",
-                          color: "var(--text-faint)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {visionTitleByGroupId.get(String(g.id))}
-                      </span>
-                    )}
                     <select
                       aria-label={isVietnamese ? `Độ ưu tiên của ${g.name}` : `Priority for ${g.name}`}
                       value={taskGroups.findIndex((group) => group.id === g.id)}

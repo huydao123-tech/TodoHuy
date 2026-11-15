@@ -157,6 +157,40 @@ export function VisionLens({
           {vision.title}
         </button>
       ))}
+      <style>{`
+        .vision-lens {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+          padding: 0.65rem 0.875rem;
+          border-bottom: 1px solid var(--border);
+          background: var(--bg);
+          position: sticky;
+          top: 0;
+          z-index: 2;
+        }
+        .vision-chip {
+          max-width: 240px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          border: 1px solid var(--border);
+          background: var(--card-bg);
+          color: var(--text);
+          border-radius: var(--radius-pill);
+          padding: 0.3rem 0.7rem;
+          font: inherit;
+          font-size: 0.75rem;
+          font-weight: 560;
+          cursor: pointer;
+        }
+        .vision-chip[aria-pressed="true"] {
+          background: var(--accent-bg);
+          border-color: var(--accent-dark);
+          color: var(--text);
+          font-weight: 680;
+        }
+      `}</style>
     </div>
   );
 }

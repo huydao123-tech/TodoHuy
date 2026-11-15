@@ -190,6 +190,17 @@ export function stripGroupFromVisions<T extends { id: string; taskGroupIds: stri
   return { next: changedIds.length ? next : visions, changedIds };
 }
 
+export function groupsForVisionFilter<G extends { id: string | number }>(
+  groups: G[],
+  visions: { id: string; taskGroupIds: string[] }[],
+  selectedVisionId: string,
+): G[] {
+  if (selectedVisionId === "all") return groups;
+  const vision = visions.find((item) => item.id === selectedVisionId);
+  if (!vision) return groups;
+  return groups.filter((group) => vision.taskGroupIds.includes(String(group.id)));
+}
+
 export function groupsInVision<G extends { id: string | number; displayOrder?: number }>(
   vision: { taskGroupIds: string[] },
   groups: G[],

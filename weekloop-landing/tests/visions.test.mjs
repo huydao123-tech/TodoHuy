@@ -4,9 +4,16 @@ import {
   attachGroupToVision,
   detachGroupFromVision,
   exclusiveVisions,
+  excludedWeeksForGroup,
+  formatHorizonDate,
+  groupsForVisionFilter,
   groupsInVision,
   normalizeHorizon,
+  normalizeTaskGroupIds,
+  normalizeVisionStatus,
   parseVisionDraft,
+  plannerWeekOffsets,
+  sortVisions,
   stripGroupFromVisions,
   unassignedGroups,
   visionOwningGroup,
@@ -125,6 +132,17 @@ test("exclusive ownership keeps the active vision when a group was stored twice"
   assert.deepEqual(cleaned.find((vision) => vision.id === "old")?.taskGroupIds, ["gym"]);
 });
 
+test("the planner filter only hides groups and never renames them", () => {
+  const groups = [
+    { id: "jp", name: "Tiếng Nhật" },
+    { id: "gym", name: "Thể hình" },
+  ];
+  const visions = [{ id: "study", taskGroupIds: ["jp"] }];
+  assert.deepEqual(groupsForVisionFilter(groups, visions, "all"), groups);
+  assert.deepEqual(groupsForVisionFilter(groups, visions, "missing"), groups);
+  assert.deepEqual(groupsForVisionFilter(groups, visions, "study").map((group) => group.name), ["Tiếng Nhật"]);
+});
+
 test("groups inside a vision follow the weekly display order", () => {
   const vision = { taskGroupIds: ["b", "a", "missing"] };
   const groups = [
@@ -134,6 +152,42 @@ test("groups inside a vision follow the weekly display order", () => {
   ];
   assert.deepEqual(groupsInVision(vision, groups).map((group) => group.id), ["a", "b"]);
   assert.deepEqual(unassignedGroups([vision], groups).map((group) => group.id), ["c"]);
+});
+
+test("unknown vision status falls back to active and ids are deduped", () => {
+  assert.equal(normalizeVisionStatus("paused"), "paused");
+  assert.equal(normalizeVisionStatus("nope"), "active");
+  assert.deepEqual(normalizeTaskGroupIds([" jp ", "jp", "", null, "gym"]), ["jp", "gym"]);
+  assert.deepEqual(normalizeTaskGroupIds("jp"), []);
+});
+
+test("a horizon date formats for display and rejects text", () => {
+  assert.equal(formatHorizonDate("2027-04-15", "vi-VN"), "15/4/2027");
+  assert.equal(formatHorizonDate("tháng 4/2027", "vi-VN"), "");
+  assert.equal(normalizeHorizon("2027-04-31"), "");
+});
+
+test("visions sort active first, then by display order", () => {
+  const sorted = sortVisions([
+    { id: "done", status: "achieved", displayOrder: 0 },
+    { id: "later", status: "active", displayOrder: 2 },
+    { id: "paused", status: "paused", displayOrder: 0 },
+    { id: "first", status: "active", displayOrder: 1 },
+  ]);
+  assert.deepEqual(sorted.map((vision) => vision.id), ["first", "later", "paused", "done"]);
+});
+
+test("planner weeks follow the viewed week and remember groups removed from a week", () => {
+  assert.deepEqual(plannerWeekOffsets(3), [2, 3, 4]);
+  assert.deepEqual(excludedWeeksForGroup("jp", { 0: ["gym"], 1: ["jp", "gym"], 2: [] }), [1]);
+  assert.deepEqual(excludedWeeksForGroup(12, { "-1": [12] }), [-1]);
+});
+
+test("attaching to a missing vision leaves every list untouched", () => {
+  const visions = [japan];
+  const result = attachGroupToVision(visions, "missing", "gym");
+  assert.equal(result.next, visions);
+  assert.deepEqual(result.changedIds, []);
 });
 
 test("week progress counts only the groups that belong to the vision", () => {
