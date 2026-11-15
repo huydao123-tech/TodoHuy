@@ -128,7 +128,7 @@ function GoalCard({
     <div
       style={{
         borderRadius: "var(--radius)",
-        border: "1px solid var(--border)",
+        border: "1px solid var(--border-mid)",
         background: "var(--card-bg, #fff)",
         marginBottom: "0.625rem",
         overflow: "hidden",
@@ -143,7 +143,7 @@ function GoalCard({
           justifyContent: "space-between",
           padding: "0.5rem 0.75rem",
           borderBottom: "1px solid var(--border)",
-          background: isPast ? "var(--bg)" : "var(--bg-alt)",
+          background: "var(--bg-alt)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
