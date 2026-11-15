@@ -297,7 +297,7 @@ export default function BrainNotes() {
         .note-body pre { overflow-x: auto; padding: 1rem; border: 1px solid var(--border-mid); border-radius: 0.75rem; background: var(--bg); font-size: 0.875rem; line-height: 1.5rem; }
         .note-body pre code { font-family: var(--font-geist-mono), ui-monospace, monospace; }
         .note-body a { color: var(--accent-dark); font-weight: 560; text-decoration: underline; text-underline-offset: 4px; }
-        .note-body mark { padding: 0.0625rem 0.125rem; border-radius: 0.25rem; color: inherit; }
+        .note-body mark { padding: 0.0625rem 0.125rem; border-radius: 0.25rem; color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
         .hl-vang { background: #FEF08A; }
         .hl-la { background: #BBF7D0; }
         .hl-duong { background: #BFDBFE; }

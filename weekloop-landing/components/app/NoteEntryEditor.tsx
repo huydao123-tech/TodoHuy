@@ -100,7 +100,7 @@ export function EntryEditor({
     extensions,
     content: parseContent(content),
     editorProps: {
-      attributes: { class: "note-body", "aria-label": "Nội dung khối ngày" },
+      attributes: { class: "note-body", "aria-label": "Nội dung khối ngày", spellcheck: "false" },
       handleKeyDown: (_view, event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && editorRef.current) {
           event.preventDefault();
