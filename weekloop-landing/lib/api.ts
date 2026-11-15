@@ -23,10 +23,21 @@ import {
   Timestamp,
   writeBatch,
   onSnapshot,
+  runTransaction,
 } from "firebase/firestore";
 import { auth, db, googleProvider } from "./firebase";
 import { getMonday, formatWeekDateStr } from "./mockData";
 import { compareTaskGroups } from "./taskGroupPriority";
+import {
+  attachGroupToVision,
+  detachGroupFromVision,
+  exclusiveVisions,
+  normalizeTaskGroupIds,
+  normalizeVisionStatus,
+  stripGroupFromVisions,
+  type VisionRecord,
+  type VisionStatus,
+} from "./visions";
 
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -485,6 +496,129 @@ export const taskGroupApi = {
   },
 
 
+};
+
+// ─── VISION APIs ───────────────────────────────────────────────────────────
+// Tầm nhìn giữ taskGroupIds. Nhóm việc không có trường tầm nhìn.
+export type { VisionRecord, VisionStatus };
+
+function mapVision(id: string, data: Record<string, unknown> | undefined): VisionRecord {
+  const source = data ?? {};
+  return {
+    id,
+    title: String(source.title || ""),
+    outcome: String(source.outcome || ""),
+    horizon: String(source.horizon || ""),
+    status: normalizeVisionStatus(source.status),
+    displayOrder: typeof source.displayOrder === "number" ? source.displayOrder : 0,
+    taskGroupIds: normalizeTaskGroupIds(source.taskGroupIds),
+  };
+}
+
+const visionRepairInflight = new Set<string>();
+
+async function mutateVisionMembership(
+  uid: string,
+  mutate: (visions: VisionRecord[]) => { next: VisionRecord[]; changedIds: string[] },
+) {
+  const visionRef = collection(db, "users", uid, "visions");
+  const snap = await getDocs(visionRef);
+  const refs = snap.docs.map((item) => item.ref);
+  if (refs.length === 0) return;
+  await runTransaction(db, async (tx) => {
+    const docs = [];
+    for (const ref of refs) docs.push(await tx.get(ref));
+    const visions = docs
+      .filter((item) => item.exists())
+      .map((item) => mapVision(item.id, item.data() as Record<string, unknown>));
+    const { next, changedIds } = mutate(visions);
+    for (const id of changedIds) {
+      const vision = next.find((item) => item.id === id);
+      if (!vision) continue;
+      tx.update(doc(db, "users", uid, "visions", id), {
+        taskGroupIds: vision.taskGroupIds,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  });
+}
+
+export const visionApi = {
+  subscribe: async (onChange: (visions: VisionRecord[]) => void, onError: (error: Error) => void) => {
+    const user = await requireAuthUser();
+    return onSnapshot(collection(db, "users", user.uid, "visions"), (snapshot) => {
+      const mapped = snapshot.docs.map((item) => mapVision(item.id, item.data() as Record<string, unknown>));
+      const cleaned = exclusiveVisions(mapped);
+      onChange([...cleaned].sort((a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id)));
+
+      const dirty = cleaned.filter((vision) => {
+        const original = mapped.find((item) => item.id === vision.id);
+        if (!original) return false;
+        return original.taskGroupIds.join("\0") !== vision.taskGroupIds.join("\0");
+      });
+      if (dirty.length === 0 || visionRepairInflight.has(user.uid)) return;
+      visionRepairInflight.add(user.uid);
+      const batch = writeBatch(db);
+      dirty.forEach((vision) => {
+        batch.update(doc(db, "users", user.uid, "visions", vision.id), {
+          taskGroupIds: vision.taskGroupIds,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      batch.commit().finally(() => visionRepairInflight.delete(user.uid));
+    }, onError);
+  },
+
+  create: async (input: { title: string; outcome?: string; horizon?: string; displayOrder?: number }): Promise<VisionRecord> => {
+    const user = await requireAuthUser();
+    const record = {
+      title: input.title.trim(),
+      outcome: (input.outcome ?? "").trim(),
+      horizon: (input.horizon ?? "").trim(),
+      status: "active" as const,
+      displayOrder: input.displayOrder ?? 0,
+      taskGroupIds: [] as string[],
+    };
+    const docRef = await addDoc(collection(db, "users", user.uid, "visions"), {
+      ...record,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return { id: docRef.id, ...record };
+  },
+
+  update: async (
+    id: string,
+    patch: Partial<Pick<VisionRecord, "title" | "outcome" | "horizon" | "status">>,
+  ) => {
+    const user = await requireAuthUser();
+    const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+    if (patch.title !== undefined) payload.title = patch.title.trim();
+    if (patch.outcome !== undefined) payload.outcome = patch.outcome.trim();
+    if (patch.horizon !== undefined) payload.horizon = patch.horizon.trim();
+    if (patch.status !== undefined) payload.status = normalizeVisionStatus(patch.status);
+    await updateDoc(doc(db, "users", user.uid, "visions", id), payload);
+  },
+
+  remove: async (id: string) => {
+    const user = await requireAuthUser();
+    await deleteDoc(doc(db, "users", user.uid, "visions", id));
+  },
+
+  attachGroup: async (visionId: string, groupId: string) => {
+    const user = await requireAuthUser();
+    await mutateVisionMembership(user.uid, (visions) => attachGroupToVision(visions, visionId, groupId));
+  },
+
+  detachGroup: async (visionId: string, groupId: string) => {
+    const user = await requireAuthUser();
+    await mutateVisionMembership(user.uid, (visions) => detachGroupFromVision(visions, visionId, groupId));
+  },
+
+  removeGroupFromAll: async (groupId: string) => {
+    const user = await requireAuthUser();
+    await mutateVisionMembership(user.uid, (visions) => stripGroupFromVisions(visions, groupId));
+  },
 };
 
 // ─── NOTE APIs ─────────────────────────────────────────────────────────────

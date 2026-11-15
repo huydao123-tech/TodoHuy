@@ -71,6 +71,49 @@ export interface Translations {
   renameTooltip: string;
   archiveTooltip: string;
 
+  // Visions
+  visions: string;
+  visionsIntro: string;
+  addVision: string;
+  createVision: string;
+  visionTitleLabel: string;
+  visionTitlePlaceholder: string;
+  visionOutcomeLabel: string;
+  visionOutcomePlaceholder: string;
+  visionHorizonLabel: string;
+  visionHorizonPlaceholder: string;
+  outcomeHint: string;
+  visionGroupsLabel: string;
+  attachGroup: string;
+  attachIntoVision: string;
+  moveIntoVision: string;
+  detachGroup: string;
+  createGroupInVision: string;
+  groupNameLabel: string;
+  groupNamePlaceholder: string;
+  noGroupsInVision: string;
+  unassignedGroups: string;
+  unassignedHint: string;
+  ownedBy: string;
+  notInVision: string;
+  visionEmptyTitle: string;
+  visionEmptyBody: string;
+  visionEmptyWithGroups: string;
+  visionStatusLabel: string;
+  visionStatusActive: string;
+  visionStatusPaused: string;
+  visionStatusAchieved: string;
+  editVision: string;
+  deleteVision: string;
+  deleteVisionConfirm: string;
+  allGroups: string;
+  viewWeek: string;
+  manageGroups: string;
+  visionFilterEmpty: string;
+  couldNotSaveVision: string;
+  movedGroup: string;
+  titleRequired: string;
+
   // Planner & WeekGrid
   currentWeekBadge: string;
   pastWeekBadge: string;
@@ -218,6 +261,49 @@ export const translations: Record<AppLanguage, Translations> = {
     renameTooltip: "Sửa tên",
     archiveTooltip: "Lưu trữ vào thùng rác",
 
+    // Visions
+    visions: "Tầm nhìn",
+    visionsIntro: "Mỗi tầm nhìn giữ một hoặc nhiều nhóm việc. Việc trong tuần vẫn nằm ở từng nhóm.",
+    addVision: "Thêm tầm nhìn",
+    createVision: "Tạo tầm nhìn",
+    visionTitleLabel: "Tên tầm nhìn",
+    visionTitlePlaceholder: "Ví dụ: Du học Nhật",
+    visionOutcomeLabel: "Kết quả khi xong",
+    visionOutcomePlaceholder: "Ví dụ: nhập học kỳ tháng 4/2027",
+    visionHorizonLabel: "Mốc thời gian",
+    visionHorizonPlaceholder: "Ví dụ: tháng 4/2027",
+    outcomeHint: "Một câu về kết quả. Danh sách việc nằm ở nhóm việc bên dưới.",
+    visionGroupsLabel: "Nhóm việc trong tầm nhìn này",
+    attachGroup: "Gắn nhóm việc",
+    attachIntoVision: "Gắn vào đây",
+    moveIntoVision: "Chuyển sang đây",
+    detachGroup: "Gỡ",
+    createGroupInVision: "Tạo nhóm việc",
+    groupNameLabel: "Tên nhóm việc",
+    groupNamePlaceholder: "Ví dụ: Học IELTS",
+    noGroupsInVision: "Chưa có nhóm việc nào trong tầm nhìn này.",
+    unassignedGroups: "Nhóm việc chưa gắn vào tầm nhìn",
+    unassignedHint: "Mở một tầm nhìn và chọn Gắn nhóm việc.",
+    ownedBy: "Đang ở",
+    notInVision: "Chưa thuộc tầm nhìn nào",
+    visionEmptyTitle: "Chưa có tầm nhìn",
+    visionEmptyBody: "Ví dụ: tầm nhìn Du học Nhật gồm các nhóm Học tiếng Nhật, Học IELTS và Chuẩn bị hồ sơ.",
+    visionEmptyWithGroups: "Các nhóm việc hiện tại chưa thuộc tầm nhìn nào. Tạo tầm nhìn rồi gắn chúng vào.",
+    visionStatusLabel: "Trạng thái",
+    visionStatusActive: "Đang theo đuổi",
+    visionStatusPaused: "Tạm dừng",
+    visionStatusAchieved: "Đã đạt",
+    editVision: "Sửa",
+    deleteVision: "Xóa tầm nhìn",
+    deleteVisionConfirm: "Xóa tầm nhìn này? Các nhóm việc vẫn được giữ.",
+    allGroups: "Tất cả nhóm việc",
+    viewWeek: "Xem tuần này",
+    manageGroups: "Gắn nhóm việc",
+    visionFilterEmpty: "Tầm nhìn này chưa có nhóm việc đang mở.",
+    couldNotSaveVision: "Không lưu được tầm nhìn. Vui lòng thử lại.",
+    movedGroup: "Đã chuyển nhóm việc khỏi \"{name}\".",
+    titleRequired: "Hãy nhập tên tầm nhìn.",
+
     // Planner & WeekGrid
     currentWeekBadge: "Tuần này",
     pastWeekBadge: "Tuần cũ",
@@ -364,6 +450,49 @@ export const translations: Record<AppLanguage, Translations> = {
     emptyCategoriesSub: "Click the + button above to create your first category!",
     renameTooltip: "Rename",
     archiveTooltip: "Move to trash",
+
+    // Visions
+    visions: "Visions",
+    visionsIntro: "Each vision holds one or more work groups. Weekly tasks stay inside each group.",
+    addVision: "Add vision",
+    createVision: "Create vision",
+    visionTitleLabel: "Vision name",
+    visionTitlePlaceholder: "Example: Study in Japan",
+    visionOutcomeLabel: "Done looks like",
+    visionOutcomePlaceholder: "Example: enrolled for April 2027",
+    visionHorizonLabel: "Time horizon",
+    visionHorizonPlaceholder: "Example: April 2027",
+    outcomeHint: "One sentence about the result. The task list lives in the groups below.",
+    visionGroupsLabel: "Work groups in this vision",
+    attachGroup: "Attach group",
+    attachIntoVision: "Attach here",
+    moveIntoVision: "Move here",
+    detachGroup: "Remove",
+    createGroupInVision: "Create group",
+    groupNameLabel: "Group name",
+    groupNamePlaceholder: "Example: IELTS study",
+    noGroupsInVision: "This vision has no work groups yet.",
+    unassignedGroups: "Groups not attached to a vision",
+    unassignedHint: "Open a vision and choose Attach group.",
+    ownedBy: "Currently in",
+    notInVision: "Not in a vision",
+    visionEmptyTitle: "No visions yet",
+    visionEmptyBody: "Example: the vision Study in Japan holds Japanese, IELTS, and application paperwork.",
+    visionEmptyWithGroups: "Your current groups are not in a vision yet. Create a vision, then attach them.",
+    visionStatusLabel: "Status",
+    visionStatusActive: "Active",
+    visionStatusPaused: "Paused",
+    visionStatusAchieved: "Achieved",
+    editVision: "Edit",
+    deleteVision: "Delete vision",
+    deleteVisionConfirm: "Delete this vision? The work groups stay.",
+    allGroups: "All groups",
+    viewWeek: "View this week",
+    manageGroups: "Attach groups",
+    visionFilterEmpty: "This vision has no open work groups.",
+    couldNotSaveVision: "Could not save the vision. Please try again.",
+    movedGroup: "Moved the group out of \"{name}\".",
+    titleRequired: "Enter a vision name.",
 
     // Planner & WeekGrid
     currentWeekBadge: "This week",
