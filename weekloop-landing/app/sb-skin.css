@@ -129,14 +129,6 @@
   background: var(--bg);
 }
 
-#brain-view {
-  grid-column: 2 / -1;
-  grid-row: 2;
-  min-width: 0;
-  min-height: 0;
-  background: var(--bg);
-}
-
 .sidepanel-wrapper {
   grid-column: 3;
   grid-row: 2;

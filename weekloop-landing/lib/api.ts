@@ -28,7 +28,6 @@ import {
 import { auth, db, googleProvider } from "./firebase";
 import { getMonday, formatWeekDateStr } from "./mockData";
 import { compareTaskGroups } from "./taskGroupPriority";
-import { entryPlainText, plainToDoc, type BrainEntry } from "./brain";
 import {
   attachGroupToVision,
   detachGroupFromVision,
@@ -622,186 +621,6 @@ export const visionApi = {
   },
 };
 
-// ─── BRAIN NOTES (module / chủ đề / ghi chú) ───────────────────────────────
-// Cùng Firebase project và cùng user với phần còn lại của TodoHuy.
-// Không ghi đè collection `notes` cũ để app Flutter vẫn đọc được.
-export interface BrainModuleData {
-  id: string;
-  name: string;
-  position: number;
-}
-
-export interface BrainTopicData {
-  id: string;
-  moduleId: string;
-  name: string;
-  position: number;
-}
-
-export interface BrainNoteData {
-  id: string;
-  moduleId: string;
-  topicId: string;
-  title: string;
-  entries: BrainEntry[];
-  updatedAt: string;
-}
-
-export interface BrainSnapshot {
-  modules: BrainModuleData[];
-  topics: BrainTopicData[];
-  notes: BrainNoteData[];
-}
-
-function brainTime(value: unknown): string {
-  return value instanceof Timestamp ? value.toDate().toISOString() : new Date().toISOString();
-}
-
-export const brainApi = {
-  subscribe: async (onChange: (data: BrainSnapshot) => void, onError: (error: Error) => void) => {
-    const user = await requireAuthUser();
-    const uid = user.uid;
-    const state: BrainSnapshot = { modules: [], topics: [], notes: [] };
-    const emit = () => onChange({ modules: state.modules, topics: state.topics, notes: state.notes });
-    const unsubscribers = [
-      onSnapshot(collection(db, "users", uid, "modules"), (snap) => {
-        state.modules = snap.docs
-          .map((item) => ({
-            id: item.id,
-            name: String(item.data().name || ""),
-            position: Number(item.data().position || 0),
-          }))
-          .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
-        emit();
-      }, onError),
-      onSnapshot(collection(db, "users", uid, "topics"), (snap) => {
-        state.topics = snap.docs
-          .map((item) => ({
-            id: item.id,
-            moduleId: String(item.data().moduleId || ""),
-            name: String(item.data().name || ""),
-            position: Number(item.data().position || 0),
-          }))
-          .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
-        emit();
-      }, onError),
-      onSnapshot(collection(db, "users", uid, "notes"), (snap) => {
-        state.notes = snap.docs
-          .filter((item) => item.data().topicId || Array.isArray(item.data().entries))
-          .map((item) => {
-            const data = item.data();
-            const entries = Array.isArray(data.entries) ? data.entries : [];
-            return {
-              id: item.id,
-              moduleId: String(data.moduleId || ""),
-              topicId: String(data.topicId || ""),
-              title: String(data.title || ""),
-              entries: entries.map((entry: { id?: string; date?: string; content?: string }) => ({
-                id: String(entry?.id || ""),
-                date: String(entry?.date || ""),
-                content: String(entry?.content || ""),
-              })).filter((entry: BrainEntry) => entry.id),
-              updatedAt: brainTime(data.updatedAt),
-            };
-          })
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-        emit();
-      }, onError),
-    ];
-    return () => unsubscribers.forEach((stop) => stop());
-  },
-
-  createModule: async (name: string, position: number) => {
-    const user = await requireAuthUser();
-    const ref = await addDoc(collection(db, "users", user.uid, "modules"), {
-      name,
-      position,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return ref.id;
-  },
-
-  renameModule: async (id: string, name: string) => {
-    const user = await requireAuthUser();
-    await updateDoc(doc(db, "users", user.uid, "modules", id), { name, updatedAt: serverTimestamp() });
-  },
-
-  deleteModule: async (id: string) => {
-    const user = await requireAuthUser();
-    const uid = user.uid;
-    const [topics, notes] = await Promise.all([
-      getDocs(collection(db, "users", uid, "topics")),
-      getDocs(collection(db, "users", uid, "notes")),
-    ]);
-    const batch = writeBatch(db);
-    batch.delete(doc(db, "users", uid, "modules", id));
-    topics.docs.filter((item) => item.data().moduleId === id).forEach((item) => batch.delete(item.ref));
-    notes.docs.filter((item) => item.data().moduleId === id).forEach((item) => batch.delete(item.ref));
-    await batch.commit();
-  },
-
-  createTopic: async (moduleId: string, name: string, position: number) => {
-    const user = await requireAuthUser();
-    const ref = await addDoc(collection(db, "users", user.uid, "topics"), {
-      moduleId,
-      name,
-      position,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return ref.id;
-  },
-
-  renameTopic: async (id: string, name: string) => {
-    const user = await requireAuthUser();
-    await updateDoc(doc(db, "users", user.uid, "topics", id), { name, updatedAt: serverTimestamp() });
-  },
-
-  deleteTopic: async (id: string) => {
-    const user = await requireAuthUser();
-    const uid = user.uid;
-    const notes = await getDocs(collection(db, "users", uid, "notes"));
-    const batch = writeBatch(db);
-    batch.delete(doc(db, "users", uid, "topics", id));
-    notes.docs.filter((item) => item.data().topicId === id).forEach((item) => batch.delete(item.ref));
-    await batch.commit();
-  },
-
-  createNote: async (moduleId: string, topicId: string, title: string) => {
-    const user = await requireAuthUser();
-    const today = new Date();
-    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const entries = [{ id: crypto.randomUUID(), date, content: plainToDoc("") }];
-    const ref = await addDoc(collection(db, "users", user.uid, "notes"), {
-      moduleId,
-      topicId,
-      title,
-      entries,
-      searchText: title.toLowerCase(),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return ref.id;
-  },
-
-  updateNote: async (id: string, title: string, entries: BrainEntry[]) => {
-    const user = await requireAuthUser();
-    const searchText = [title, ...entries.map((entry) => entryPlainText(entry.content))].join("\n").toLowerCase();
-    await updateDoc(doc(db, "users", user.uid, "notes", id), {
-      title,
-      entries,
-      searchText,
-      updatedAt: serverTimestamp(),
-    });
-  },
-
-  deleteNote: async (id: string) => {
-    const user = await requireAuthUser();
-    await deleteDoc(doc(db, "users", user.uid, "notes", id));
-  },
-};
-
 // ─── NOTE APIs ─────────────────────────────────────────────────────────────
 export interface NoteData {
   id: string;
@@ -819,6 +638,7 @@ export const noteApi = {
     return snap.docs.flatMap((d) => {
       const data = d.data();
       const updated = data.updatedAt as Timestamp | undefined;
+        // Ghi chú cũ của Bộ não (có entries hoặc topicId) không hiện trong tab Ghi chú.
         if (Array.isArray(data.entries) || data.topicId) return [];
         return {
           id: d.id,

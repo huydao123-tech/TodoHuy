@@ -46,7 +46,6 @@ export interface Translations {
   // Navigation & Shell
   planner: string;
   notes: string;
-  brain: string;
   sideTasks: string;
   prevWeek: string;
   nextWeek: string;
@@ -239,7 +238,6 @@ export const translations: Record<AppLanguage, Translations> = {
     // Navigation & Shell
     planner: "Kế hoạch (Planner)",
     notes: "Ghi chú",
-    brain: "Bộ não",
     sideTasks: "Việc phụ",
     prevWeek: "Tuần trước",
     nextWeek: "Tuần sau",
@@ -432,7 +430,6 @@ export const translations: Record<AppLanguage, Translations> = {
     // Navigation & Shell
     planner: "Planner",
     notes: "Notes",
-    brain: "Second brain",
     sideTasks: "Side Tasks",
     prevWeek: "Previous week",
     nextWeek: "Next week",
