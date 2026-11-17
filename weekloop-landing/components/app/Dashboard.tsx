@@ -46,7 +46,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 import WeekGrid from "@/components/app/WeekGrid";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
-import BrainNotes from "@/components/app/BrainNotes";
 import VisionsBoard, { VisionLens } from "@/components/app/VisionsBoard";
 import {
   CaretLeft,
@@ -66,7 +65,6 @@ import {
   List,
   CheckSquare,
   Flag,
-  Brain,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -166,7 +164,7 @@ export default function Dashboard() {
   const { t, lang, setLang, isVietnamese } = useLanguage();
   const [authChecking, setAuthChecking] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<"planner" | "visions" | "notes" | "brain">("planner");
+  const [activeTab, setActiveTab] = useState<"planner" | "visions" | "notes">("planner");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileSidePanelOpen, setMobileSidePanelOpen] = useState(false);
 
@@ -1167,15 +1165,6 @@ export default function Dashboard() {
               }}
             />
             <SideNavItem
-              icon={<Brain size={15} />}
-              label={t.brain}
-              active={activeTab === "brain"}
-              onClick={() => {
-                setActiveTab("brain");
-                setMobileSidebarOpen(false);
-              }}
-            />
-            <SideNavItem
               icon={<Notebook size={15} />}
               label={t.notes}
               active={activeTab === "notes"}
@@ -1607,10 +1596,6 @@ export default function Dashboard() {
                 setActiveTab("planner");
               }}
             />
-          </main>
-        ) : activeTab === "brain" ? (
-          <main id="brain-view" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex" }}>
-            <BrainNotes />
           </main>
         ) : (
           <main id="notes-view" style={{ flex: 1, overflowY: "auto", display: "flex" }}>
@@ -2338,19 +2323,6 @@ export default function Dashboard() {
 
         <button
           type="button"
-          className={`mobile-bottom-tab ${activeTab === "brain" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("brain");
-            setMobileSidebarOpen(false);
-            setMobileSidePanelOpen(false);
-          }}
-        >
-          <Brain size={19} weight={activeTab === "brain" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
-          <span>{t.brain}</span>
-        </button>
-
-        <button
-          type="button"
           className={`mobile-bottom-tab ${activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
           onClick={() => {
             setActiveTab("notes");
@@ -2566,7 +2538,7 @@ export default function Dashboard() {
             text-align: center;
             line-height: 1.2;
           }
-          #main-grid, #notes-view, #visions-view, #brain-view {
+          #main-grid, #notes-view, #visions-view {
             padding-bottom: 64px !important;
           }
           .desktop-only-btn {
