@@ -7,7 +7,7 @@
 
 ## 1. Trạng thái repo sau phiên
 
-Sáu commit đã push lên `main`:
+Bảy commit đã push lên `main`:
 
 | Commit | Nội dung |
 | --- | --- |
@@ -17,6 +17,7 @@ Sáu commit đã push lên `main`:
 | `79689d5` | Add session handoff notes for the weekly to-do module |
 | `e143dfc` | List existing planner tasks in the day task composer |
 | `9c800f0` | Restyle the app to the mobile design report (skin B) |
+| `070a39c` | Move the sidebar user profile above the logout button |
 
 `git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → các commit trên → `origin/main` khớp local. Các commit chỉ sửa riêng tài liệu này không nhất thiết liệt kê trong bảng.
 
@@ -111,6 +112,7 @@ Luật hiện tại:
 
 - **Tokens** (`app/globals.css`, `app/sb-skin.css`): nền giấy ấm `#FAFAF9`, card trắng, input `#F5F5F4`, accent emerald duy nhất `#16A34A`, Inter, radius `8/12/14/16/24`, shadow mềm `--shadow-soft` (dark: bỏ shadow, dùng viền zinc `#09090B` / `#18181B`), thêm `--danger`, `--warning`, `--accent-ghost`, `--accent-contrast`, `--surface-subtle`.
 - **Shell desktop**: sidebar **260px** với brand gradient, profile user, section label uppercase, nhóm việc dense, footer Đăng xuất + version; topbar **64px** có **title + subtitle theo tab**, **week navigator dạng card** (chevron 32px, label 2 dòng `TUẦN HIỆN TẠI` + ngày, chip “Về hôm nay”), cụm actions theme/ngôn ngữ/văn phòng/avatar; vùng nội dung giới hạn **1440px** căn giữa.
+- **Vị trí profile user (yêu cầu sau redesign)**: tên + email + avatar nằm ở **footer sidebar, ngay trên nút “Đăng xuất”** (không còn nằm dưới brand ở đầu sidebar); áp dụng cho cả desktop lẫn drawer mobile.
 - **Mobile**: topbar 56px (hamburger + title); week navigator chuyển vào nội dung (`mobile-week-nav`) cho Planner + Việc cần làm; thanh tab dưới 60px, icon 20, label 11.5, active accent; drawer danh mục 304px; **bỏ 3 tab cột tuần trong Planner** (chỉ hiện tuần đang xem, điều hướng bằng week navigator).
 - **Planner (`WeekGrid`)**: card đầu việc radius 16, viền 1px, header tint 6% màu nhóm + tên nhóm màu nhóm 14/700 + count “N việc”; row 14/500, ghi chú icon; add row ở footer dạng accent; cột tuần tách bằng gap 16 thay vì đường kẻ; badge “Tuần cũ” dạng chip nhỏ; empty state chuẩn.
 - **Việc cần làm (`WeekAgenda`)**: header stick title 19/800 + progress 12 + hide-done; hàng đợi **card thường (bỏ dashed)** có icon inbox, count, nút “Tự xếp lịch” accent ghost; 7 thẻ thứ radius 16, thẻ hôm nay viền accent 1.2px, header ngày 14/800 + date 11 + chip hôm nay + count; row content 13.5/500, meta 10.5, tay cầm kéo 18px, status 18px; day picker popover radius 14, chip selected accent-ghost + viền accent; composer input 40px radius 12, list “Việc đã có trong Planner” nền `--bg-alt`; read-only banner; empty state vòng 72.
