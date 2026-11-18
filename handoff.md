@@ -1,13 +1,13 @@
 # Handoff — WeekLoop, module “Việc cần làm”
 
 > Cập nhật: 18/11/2026 · Nhánh: `main` · Repo: `huydao123-tech/TodoHuy`
-> Tài liệu này ghi lại toàn bộ thay đổi đã làm cho app trong phiên làm việc này, dùng để bàn giao cho người/phiên sau.
+> Tài liệu này ghi lại toàn bộ thay đổi đã làm cho app trong phiên làm việc này, dùng để bàn giao cho người/phiên sau. Lần cập nhật gần nhất: **redesign UI toàn app theo `UI-DESIGN-REPORT.md`**.
 >
 > **Quy ước cập nhật (chủ dự án yêu cầu):** mỗi khi code của app thay đổi, cập nhật file này **ngay trong cùng lần làm** — thêm commit vào bảng dưới, mô tả tính năng/hành vi mới, cập nhật mục kiểm tra và mục giới hạn. Không để handoff lệch code.
 
 ## 1. Trạng thái repo sau phiên
 
-Năm commit đã push lên `main`:
+Sáu commit đã push lên `main`:
 
 | Commit | Nội dung |
 | --- | --- |
@@ -16,6 +16,7 @@ Năm commit đã push lên `main`:
 | `49c7854` | Remove a task from one weekday without deleting it |
 | `79689d5` | Add session handoff notes for the weekly to-do module |
 | `e143dfc` | List existing planner tasks in the day task composer |
+| `9c800f0` | Restyle the app to the mobile design report (skin B) |
 
 `git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → các commit trên → `origin/main` khớp local. Các commit chỉ sửa riêng tài liệu này không nhất thiết liệt kê trong bảng.
 
@@ -103,8 +104,22 @@ Luật hiện tại:
 
 - Sidebar trái có mục mới **“Việc cần làm”** (icon `ListChecks`) kèm badge số việc chưa xong của tuần đang xem.
 - Thanh chuyển tuần trên top bar dùng chung cho Planner và Việc cần làm (cùng `viewOffset`).
-- Thanh tab dưới (mobile) thành 5 tab: Planner · Việc cần làm · Tầm nhìn · Ghi chú · Danh mục. **Bỏ tab “Việc phụ”** khỏi thanh dưới để đủ chỗ; nút mở Việc phụ trên top bar (chỉ ở Planner) vẫn còn.
+- Thanh tab dưới (mobile) 5 tab theo báo cáo: **Kế hoạch · Cần làm · Tầm nhìn · Việc phụ · Ghi chú**. Danh mục/đầu việc mở bằng nút hamburger trên top bar (bỏ tab “Danh mục” khỏi thanh dưới).
 - `#agenda-view` được thêm vào layout app shell (`app/sb-skin.css`) và padding bottom cho mobile.
+
+### 3.3. Redesign UI toàn app theo `UI-DESIGN-REPORT.md` (skin B)
+
+- **Tokens** (`app/globals.css`, `app/sb-skin.css`): nền giấy ấm `#FAFAF9`, card trắng, input `#F5F5F4`, accent emerald duy nhất `#16A34A`, Inter, radius `8/12/14/16/24`, shadow mềm `--shadow-soft` (dark: bỏ shadow, dùng viền zinc `#09090B` / `#18181B`), thêm `--danger`, `--warning`, `--accent-ghost`, `--accent-contrast`, `--surface-subtle`.
+- **Shell desktop**: sidebar **260px** với brand gradient, profile user, section label uppercase, nhóm việc dense, footer Đăng xuất + version; topbar **64px** có **title + subtitle theo tab**, **week navigator dạng card** (chevron 32px, label 2 dòng `TUẦN HIỆN TẠI` + ngày, chip “Về hôm nay”), cụm actions theme/ngôn ngữ/văn phòng/avatar; vùng nội dung giới hạn **1440px** căn giữa.
+- **Mobile**: topbar 56px (hamburger + title); week navigator chuyển vào nội dung (`mobile-week-nav`) cho Planner + Việc cần làm; thanh tab dưới 60px, icon 20, label 11.5, active accent; drawer danh mục 304px; **bỏ 3 tab cột tuần trong Planner** (chỉ hiện tuần đang xem, điều hướng bằng week navigator).
+- **Planner (`WeekGrid`)**: card đầu việc radius 16, viền 1px, header tint 6% màu nhóm + tên nhóm màu nhóm 14/700 + count “N việc”; row 14/500, ghi chú icon; add row ở footer dạng accent; cột tuần tách bằng gap 16 thay vì đường kẻ; badge “Tuần cũ” dạng chip nhỏ; empty state chuẩn.
+- **Việc cần làm (`WeekAgenda`)**: header stick title 19/800 + progress 12 + hide-done; hàng đợi **card thường (bỏ dashed)** có icon inbox, count, nút “Tự xếp lịch” accent ghost; 7 thẻ thứ radius 16, thẻ hôm nay viền accent 1.2px, header ngày 14/800 + date 11 + chip hôm nay + count; row content 13.5/500, meta 10.5, tay cầm kéo 18px, status 18px; day picker popover radius 14, chip selected accent-ghost + viền accent; composer input 40px radius 12, list “Việc đã có trong Planner” nền `--bg-alt`; read-only banner; empty state vòng 72.
+- **Ghi chú (`NotesGallery`)**: search card radius 14, chip lọc 36px, masonry 2/3/4 cột (gap 16), note card pastel radius 16, editor desktop 680px / mobile sheet 88dvh radius 24, footer Xoá/Huỷ/Lưu.
+- **Đăng nhập (`app/login`)**: logo gradient 68px radius 20, app name 28/800, segmented login/signup radius 14, field radius 14, button accent 52px, language pill.
+- **Việc phụ (`SidePanel`)**: panel card list radius 14, checkbox 22px, empty state, capture dock input radius 14 + nút gửi 44×44 accent.
+- **Tầm nhìn (`VisionsBoard`)**: card radius 16 + header tint + badge, chip lọc 38px, trạng thái vision dạng pill, nhóm việc ListTile dense, panel gán nhóm, empty state; status trong Tầm nhìn vẫn giữ.
+- **TaskDetailModal**: dialog desktop 600px radius 20, mobile bottom sheet radius 24, title 20/700, status 3 ô radius 12, note nền `--bg-alt` radius 12, footer nút radius 12.
+- File spec gốc `UI-DESIGN-REPORT.md` đã được commit vào repo cùng lần này.
 
 ---
 
@@ -140,22 +155,28 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
 
 | File | Vai trò |
 | --- | --- |
-| `weekloop-landing/components/app/WeekAgenda.tsx` | Toàn bộ màn “Việc cần làm”: 7 thẻ thứ, hàng đợi, popover chọn nhiều thứ, kéo-thả, composer thêm việc (kèm danh sách task có sẵn của đầu việc đang chọn), tự xếp lịch, empty/read-only states, CSS scoped. |
+| `weekloop-landing/components/app/WeekAgenda.tsx` | Toàn bộ màn “Việc cần làm”: 7 thẻ thứ, hàng đợi, popover chọn nhiều thứ, kéo-thả, composer thêm việc (kèm danh sách task có sẵn của đầu việc đang chọn), tự xếp lịch, empty/read-only states, CSS scoped. **Redesign:** header stick + progress mảnh, hàng đợi card thường + icon inbox, thẻ thứ radius 16, type scale và control theo báo cáo. |
 | `weekloop-landing/lib/weekAgenda.ts` | Logic thuần: chuẩn hoá ngày/thứ tự, gom việc theo thứ, sắp xếp, ngày thật của từng thứ, kế hoạch tự xếp lịch. |
 | `weekloop-landing/tests/weekAgenda.test.mjs` | 23 test cho module (lặp ngày, gộp trùng, thứ tự tay, tự xếp lịch không giới hạn, bỏ một thứ…). |
 | `weekloop-landing/DESIGN.md` | Ghi quyết định giao diện: bộ mặt, màu nhấn, planner không trạng thái, mô tả module (theo skill `ui-ux`). |
+| `weekloop-landing/UI-DESIGN-REPORT.md` | Báo cáo thiết kế mobile 390×844 (tokens, layout, component, blueprint port web) dùng làm spec cho lần redesign này. |
 
 ### File sửa
 
 | File | Thay đổi chính |
 | --- | --- |
-| `components/app/Dashboard.tsx` | Tab `agenda`; mục sidebar + badge; top bar tuần cho agenda; thanh tab dưới mobile; handler `handleAssignDays`, `handleAutoSchedule`, `handleReorderDay`, `handleRemoveFromDay`; map thêm `daysOfWeek`, `dayOrder`; bỏ `onCycleStatus` khỏi WeekGrid; truyền props mới cho WeekAgenda. |
-| `components/app/WeekGrid.tsx` | Bỏ toàn bộ UI trạng thái; badge đếm tổng việc; bỏ prop `onCycleStatus`; modal chi tiết `showStatus={false}`; sửa đồng bộ `localItems` sang render-time (bỏ effect, memo hoá fallback mock). |
-| `components/app/TaskDetailModal.tsx` | Thêm `showStatus`; đồng bộ nội dung khi đổi task bằng render-time thay vì effect; `handleSave`/`handleDelete` chuyển lên trước effect bàn phím; nút “dời tuần” không còn phụ thuộc status khi `showStatus=false`. |
+| `components/app/Dashboard.tsx` | Tab `agenda`; mục sidebar + badge; top bar tuần cho agenda; thanh tab dưới mobile; handler `handleAssignDays`, `handleAutoSchedule`, `handleReorderDay`, `handleRemoveFromDay`; map thêm `daysOfWeek`, `dayOrder`; bỏ `onCycleStatus` khỏi WeekGrid; truyền props mới cho WeekAgenda. **Redesign:** shell mới (topbar title/subtitle + week navigator card, sidebar profile/section/footer, content max 1440, bottom nav 5 tab đúng báo cáo, week navigator mobile trong nội dung, drawer việc phụ dùng được từ mọi tab). |
+| `components/app/WeekGrid.tsx` | Bỏ toàn bộ UI trạng thái; badge đếm tổng việc; bỏ prop `onCycleStatus`; modal chi tiết `showStatus={false}`; sửa đồng bộ `localItems` sang render-time (bỏ effect, memo hoá fallback mock). **Redesign:** card radius 16 + header tint màu nhóm + count “N việc”, row 14/500, add row footer, cột tuần tách gap, bỏ 3 tab cột trên mobile. |
+| `components/app/TaskDetailModal.tsx` | Thêm `showStatus`; đồng bộ nội dung khi đổi task bằng render-time thay vì effect; `handleSave`/`handleDelete` chuyển lên trước effect bàn phím; nút “dời tuần” không còn phụ thuộc status khi `showStatus=false`. **Redesign:** dialog 600px radius 20 / sheet mobile radius 24, title 20/700, status ô radius 12, note nền subtle, footer nút radius 12. |
 | `lib/api.ts` | Thêm `daysOfWeek`, `dayOrder` vào type + đọc/ghi; batch `assignDays`, `setDayOrder`; tương thích `dayOfWeek` cũ. |
 | `lib/mockData.ts` | `WorkItemData` thêm `daysOfWeek?`, `dayOrder?`. |
 | `lib/translations.ts` | Thêm ~27 key vi/en cho module (tên tab, hàng đợi, chọn thứ, tự xếp lịch, kéo-thả, bỏ khỏi thứ, danh sách việc có sẵn từ Planner…). |
-| `app/sb-skin.css` | Thêm `#agenda-view` vào layout grid + mobile padding. |
+| `app/globals.css` | Token mới theo báo cáo: giấy ấm, emerald, radius 8/12/14/16/24, shadow-soft, danger/warning, dark zinc; giữ tương thích biến cũ để landing không vỡ. |
+| `app/sb-skin.css` | Shell desktop/mobile mới: 260px sidebar, 64/56px topbar, content max 1440; topbar title/subtitle, week navigator card, avatar; sidebar profile/section/footer; bottom nav, toast; dark mode. |
+| `app/login/page.tsx` | Redesign auth theo §9: logo gradient, segmented, field radius 14, button accent, language pill; logic auth giữ nguyên. |
+| `components/app/NotesGallery.tsx` | Redesign §6/§15.8: search card, chip lọc, masonry 2/3/4, note card pastel radius 16, editor modal/sheet; logic giữ nguyên. |
+| `components/app/SidePanel.tsx` | Redesign §7: card list, checkbox tròn 22, empty state, capture dock; props/handlers giữ nguyên. |
+| `components/app/VisionsBoard.tsx` | Redesign §8: card radius 16 + header tint, chip lọc, pill trạng thái, nhóm việc dense, panel gán nhóm, empty state; logic giữ nguyên. |
 | `tests/weekAgenda.test.mjs` | Thêm test cho các thay đổi mới (tổng 23 test trong file). |
 
 ---
@@ -173,6 +194,7 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
   - Bỏ việc 3 ngày khỏi T3 → chỉ mất T3, còn T5/T7; bỏ việc 1 ngày → về hàng đợi; nút Xóa hẳn vẫn còn trong modal.
   - Mở composer “Thêm việc” trong T4: danh sách “Việc đã có trong Planner” hiện đúng 2 task của đầu việc (1 task đang ở T3 có nhãn ngày, 1 task chưa xếp); bấm 1 dòng → task vào T4, biến khỏi danh sách chọn; đổi đầu việc → danh sách đổi theo (3 task Gym kèm nhãn ngày).
   - Không có lỗi console; 390px không tràn ngang; kiểm tra cả dark mode ở các vòng trước.
+- **Kiểm tra redesign UI (Playwright + preview route tạm, đã xoá):** chụp shell 1440 / 390, Planner 1440 / 390, Việc cần làm 1440 / 390, Login 1280 / 390, dark mode cho shell/agenda/login. Kết quả: không tràn ngang ở 390 (scrollWidth = clientWidth), không lỗi console; `/dashboard` compile 200 rồi redirect `/login` khi chưa đăng nhập; landing `/` vẫn render bình thường sau khi đổi token. File spec [UI-DESIGN-REPORT.md](UI-DESIGN-REPORT.md) dùng chung cho lần sau.
 - Lưu ý khi dev: dùng `http://localhost:3123` (không dùng `127.0.0.1`) để Next dev không chặn HMR/JS do cross-origin dev resource.
 
 ---
@@ -189,6 +211,9 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
 8. Những việc đã xong mà chưa từng xếp thứ sẽ nằm lại “Chưa xếp thứ” (không tự xếp khi chạy auto vì auto bỏ qua việc DONE).
 9. Backend Spring Boot không được cập nhật `daysOfWeek`/`dayOrder`; nếu sau này chuyển sang dùng backend thì cần thêm cột/bảng tương ứng.
 10. Hai file `skills-lock.json` và `.agents/skills/ui-ux/` vẫn ngoài commit; nếu muốn đưa skill vào repo thì cần commit riêng.
+11. **Planner giữ layout 3 cột tuần của bản web** (không chuyển sang 1 tuần + grid như mobile gợi ý) vì đây là điểm khác biệt của bản web; mobile chỉ hiện tuần đang xem và điều hướng bằng week navigator (đã bỏ 3 tab cột).
+12. `UI-DESIGN-REPORT.md` mô tả bản mobile Flutter; các màn **/garden** (scene 3D) không nằm trong phạm vi redesign.
+13. Token trong `app/globals.css` dùng chung cho cả landing; landing vẫn render bình thường sau khi đổi palette/radius nhưng nếu sau này muốn brand landing khác app thì cần tách file token.
 
 ## 8. Gợi ý việc tiếp theo
 
