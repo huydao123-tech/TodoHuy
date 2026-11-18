@@ -5,15 +5,17 @@
 
 ## 1. Trạng thái repo sau phiên
 
-Ba commit đã push lên `main`:
+Năm commit đã push lên `main`:
 
 | Commit | Nội dung |
 | --- | --- |
 | `2c095fd` | Add weekly to-do agenda with repeat days and auto-planning |
 | `5d6294c` | Move task status into the to-do module and reorder tasks by drag |
 | `49c7854` | Remove a task from one weekday without deleting it |
+| `79689d5` | Add session handoff notes for the weekly to-do module |
+| `e143dfc` | List existing planner tasks in the day task composer |
 
-`git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → 3 commit trên → `origin/main` khớp local.
+`git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → các commit trên → `origin/main` khớp local.
 
 Chưa commit (có từ trước phiên, không thuộc tính năng):
 - `skills-lock.json` (sửa) — do cài skill `ui-ux`.
@@ -33,6 +35,7 @@ Thêm **một module màn hình mới** (không thay Planner), nằm ở `/dashb
 - Hiển thị **việc cần làm của từng thứ trong tuần**: 7 thẻ T2 → CN của tuần đang xem, cạnh nhau dạng lưới (desktop 4 cột → 3 → 2 → 1 theo bề rộng).
 - **Hàng đợi “Chưa xếp thứ”** nằm trên cùng: mọi việc của tuần chưa gán thứ nào (kể cả toàn bộ task cũ chưa từng có ngày) đều nằm đây, kèm nút **“Tự xếp lịch”**.
 - **Thêm việc** ngay trong từng thẻ thứ: chọn **đầu việc (task group) từ Planner** + nhập nội dung; việc tạo ra thuộc đúng tuần, đúng thứ và **xuất hiện ngay bên Planner** (dùng chung một nguồn dữ liệu `work_items`).
+- Ngay dưới ô chọn đầu việc, composer hiện **“Việc đã có trong Planner”**: danh sách task của đúng đầu việc đó trong tuần đang xem (bỏ qua việc đã xong và việc đã nằm ở thứ đang mở). Bấm một dòng là **thêm ngày đó vào task có sẵn** — không tạo bản copy; task đang ở thứ khác hiện kèm nhãn ngày (`T3·T5`). Vẫn tạo việc mới bằng ô nhập bên dưới; danh sách tự cập nhật sau mỗi lần thêm.
 - Việc **có thể lặp ở nhiều thứ** trong tuần bằng ô chọn nhiều thứ (xem mục 2.2).
 - **Kéo-thả đổi thứ tự** trong từng thứ (xem mục 2.4).
 - Nút **bỏ khỏi thứ này** chỉ gỡ việc khỏi ngày, không xoá (xem mục 2.5).
@@ -135,7 +138,7 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
 
 | File | Vai trò |
 | --- | --- |
-| `weekloop-landing/components/app/WeekAgenda.tsx` | Toàn bộ màn “Việc cần làm”: 7 thẻ thứ, hàng đợi, popover chọn nhiều thứ, kéo-thả, composer thêm việc, tự xếp lịch, empty/read-only states, CSS scoped. |
+| `weekloop-landing/components/app/WeekAgenda.tsx` | Toàn bộ màn “Việc cần làm”: 7 thẻ thứ, hàng đợi, popover chọn nhiều thứ, kéo-thả, composer thêm việc (kèm danh sách task có sẵn của đầu việc đang chọn), tự xếp lịch, empty/read-only states, CSS scoped. |
 | `weekloop-landing/lib/weekAgenda.ts` | Logic thuần: chuẩn hoá ngày/thứ tự, gom việc theo thứ, sắp xếp, ngày thật của từng thứ, kế hoạch tự xếp lịch. |
 | `weekloop-landing/tests/weekAgenda.test.mjs` | 23 test cho module (lặp ngày, gộp trùng, thứ tự tay, tự xếp lịch không giới hạn, bỏ một thứ…). |
 | `weekloop-landing/DESIGN.md` | Ghi quyết định giao diện: bộ mặt, màu nhấn, planner không trạng thái, mô tả module (theo skill `ui-ux`). |
@@ -149,7 +152,7 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
 | `components/app/TaskDetailModal.tsx` | Thêm `showStatus`; đồng bộ nội dung khi đổi task bằng render-time thay vì effect; `handleSave`/`handleDelete` chuyển lên trước effect bàn phím; nút “dời tuần” không còn phụ thuộc status khi `showStatus=false`. |
 | `lib/api.ts` | Thêm `daysOfWeek`, `dayOrder` vào type + đọc/ghi; batch `assignDays`, `setDayOrder`; tương thích `dayOfWeek` cũ. |
 | `lib/mockData.ts` | `WorkItemData` thêm `daysOfWeek?`, `dayOrder?`. |
-| `lib/translations.ts` | Thêm ~24 key vi/en cho module (tên tab, hàng đợi, chọn thứ, tự xếp lịch, kéo-thả, bỏ khỏi thứ…). |
+| `lib/translations.ts` | Thêm ~27 key vi/en cho module (tên tab, hàng đợi, chọn thứ, tự xếp lịch, kéo-thả, bỏ khỏi thứ, danh sách việc có sẵn từ Planner…). |
 | `app/sb-skin.css` | Thêm `#agenda-view` vào layout grid + mobile padding. |
 | `tests/weekAgenda.test.mjs` | Thêm test cho các thay đổi mới (tổng 23 test trong file). |
 
@@ -166,6 +169,7 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
   - Tự xếp lịch: 5 việc chưa xếp được rải hết (có ngày nhận nhiều việc hơn 3 → xác nhận không còn cap).
   - Trạng thái trong to-do vẫn bấm đổi được; Planner không còn chữ “Cần làm/Đang làm/Đã xong”; modal mở từ Planner không có hàng Trạng thái.
   - Bỏ việc 3 ngày khỏi T3 → chỉ mất T3, còn T5/T7; bỏ việc 1 ngày → về hàng đợi; nút Xóa hẳn vẫn còn trong modal.
+  - Mở composer “Thêm việc” trong T4: danh sách “Việc đã có trong Planner” hiện đúng 2 task của đầu việc (1 task đang ở T3 có nhãn ngày, 1 task chưa xếp); bấm 1 dòng → task vào T4, biến khỏi danh sách chọn; đổi đầu việc → danh sách đổi theo (3 task Gym kèm nhãn ngày).
   - Không có lỗi console; 390px không tràn ngang; kiểm tra cả dark mode ở các vòng trước.
 - Lưu ý khi dev: dùng `http://localhost:3123` (không dùng `127.0.0.1`) để Next dev không chặn HMR/JS do cross-origin dev resource.
 
@@ -176,12 +180,13 @@ Chuẩn hoá dữ liệu nằm ở [lib/weekAgenda.ts](weekloop-landing/lib/week
 1. **Một task = một trạng thái chung cho mọi ngày lặp.** Tick xong ở T2 là xong ở T4/T6. Nếu muốn tick riêng từng lần lặp thì phải tách dữ liệu theo “occurrence” (task con hoặc bảng riêng) — chưa làm.
 2. **Kéo-thả chỉ trong một thứ**, không kéo giữa các thứ (muốn đổi thứ thì dùng ô chọn ngày) và **không có kéo bằng bàn phím**.
 3. Khi bật **“Ẩn việc đã xong”**, tay cầm kéo bị ẩn và không kéo được cho tới khi hiện lại.
-4. **Tự xếp lịch chỉ gán 1 ngày cho mỗi việc chưa xếp**, không tự tạo việc lặp; muốn việc lặp thì chọn tay bằng ô ngày.
-5. Dữ liệu dashboard load **một lần** khi mở app rồi cập nhật optimistic trong state chung; chưa có `onSnapshot` realtime cho work_items. Thao tác ở tab này thấy ngay ở tab kia vì dùng chung state, nhưng mở nhiều tab/thiết bị cùng lúc thì cần tải lại.
-6. Planner vẫn giữ field `status` trong dữ liệu (agenda/Tầm nhìn dùng); Planner chỉ không hiển thị. **Tầm nhìn** vẫn hiển thị status và vẫn lọc việc chưa xong.
-7. Những việc đã xong mà chưa từng xếp thứ sẽ nằm lại “Chưa xếp thứ” (không tự xếp khi chạy auto vì auto bỏ qua việc DONE).
-8. Backend Spring Boot không được cập nhật `daysOfWeek`/`dayOrder`; nếu sau này chuyển sang dùng backend thì cần thêm cột/bảng tương ứng.
-9. Hai file `skills-lock.json` và `.agents/skills/ui-ux/` vẫn ngoài commit; nếu muốn đưa skill vào repo thì cần commit riêng.
+4. Danh sách “Việc đã có trong Planner” trong composer **chỉ lấy task của đầu việc đang chọn trong tuần đang xem**, bỏ qua việc DONE và việc đã có mặt ở thứ đang mở; danh sách không phân trang, cuộn trong khung cao ~150px.
+5. **Tự xếp lịch chỉ gán 1 ngày cho mỗi việc chưa xếp**, không tự tạo việc lặp; muốn việc lặp thì chọn tay bằng ô ngày.
+6. Dữ liệu dashboard load **một lần** khi mở app rồi cập nhật optimistic trong state chung; chưa có `onSnapshot` realtime cho work_items. Thao tác ở tab này thấy ngay ở tab kia vì dùng chung state, nhưng mở nhiều tab/thiết bị cùng lúc thì cần tải lại.
+7. Planner vẫn giữ field `status` trong dữ liệu (agenda/Tầm nhìn dùng); Planner chỉ không hiển thị. **Tầm nhìn** vẫn hiển thị status và vẫn lọc việc chưa xong.
+8. Những việc đã xong mà chưa từng xếp thứ sẽ nằm lại “Chưa xếp thứ” (không tự xếp khi chạy auto vì auto bỏ qua việc DONE).
+9. Backend Spring Boot không được cập nhật `daysOfWeek`/`dayOrder`; nếu sau này chuyển sang dùng backend thì cần thêm cột/bảng tương ứng.
+10. Hai file `skills-lock.json` và `.agents/skills/ui-ux/` vẫn ngoài commit; nếu muốn đưa skill vào repo thì cần commit riêng.
 
 ## 8. Gợi ý việc tiếp theo
 
