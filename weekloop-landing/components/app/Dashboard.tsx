@@ -100,11 +100,11 @@ function SideNavItem({
         justifyContent: "space-between",
         width: "100%",
         height: 40,
-        background: active ? "var(--bg-alt)" : "transparent",
+        background: active ? "var(--accent-ghost)" : "transparent",
         border: "none",
         cursor: "pointer",
-        padding: "0 0.75rem",
-        borderRadius: 12,
+        padding: "0 10px",
+        borderRadius: 10,
         textAlign: "left",
         transition: "background 0.14s ease",
       }}
@@ -112,18 +112,23 @@ function SideNavItem({
         if (!active) (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
       }}
       onMouseLeave={(e) => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = "none";
+        if (!active) (e.currentTarget as HTMLElement).style.background = "transparent";
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ color: active ? "var(--text)" : "var(--text-muted)", display: "flex" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            color: active ? "var(--accent-contrast)" : "var(--text-muted)",
+            display: "flex",
+          }}
+        >
           {icon}
         </span>
         <span
           style={{
             fontSize: "0.875rem",
-            color: active ? "var(--text)" : "var(--text-muted)",
-            fontWeight: active ? 560 : 450,
+            color: active ? "var(--accent-contrast)" : "var(--text-secondary)",
+            fontWeight: active ? 600 : 500,
           }}
         >
           {label}
@@ -133,11 +138,15 @@ function SideNavItem({
       {badge !== undefined && badge !== null && (
         <span
           style={{
-            fontSize: "0.75rem",
-            fontWeight: 500,
+            fontSize: "0.6875rem",
+            fontWeight: 600,
             fontVariantNumeric: "tabular-nums",
-            background: "transparent",
-            color: active ? "var(--text)" : "var(--text-muted)",
+            background: "var(--bg-alt)",
+            color: active ? "var(--accent-contrast)" : "var(--text-muted)",
+            borderRadius: 8,
+            padding: "1px 6px",
+            minWidth: 20,
+            textAlign: "center",
           }}
         >
           {badge}
@@ -146,6 +155,71 @@ function SideNavItem({
     </button>
   );
 }
+
+// ─── ĐIỀU HƯỚNG TUẦN (dùng chung Planner + Việc cần làm) ────────────────────
+function WeekNavCard({
+  viewOffset,
+  label,
+  isVietnamese,
+  prevLabel,
+  nextLabel,
+  todayLabel,
+  onPrev,
+  onNext,
+  onToday,
+}: {
+  viewOffset: number;
+  label: string;
+  isVietnamese: boolean;
+  prevLabel: string;
+  nextLabel: string;
+  todayLabel: string;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+}) {
+  const stateLabel =
+    viewOffset === 0
+      ? (isVietnamese ? "TUẦN HIỆN TẠI" : "THIS WEEK")
+      : viewOffset < 0
+        ? (isVietnamese ? "TUẦN ĐÃ QUA" : "PAST WEEK")
+        : (isVietnamese ? "TUẦN SẮP TỚI" : "UPCOMING WEEK");
+
+  return (
+    <div className="week-nav">
+      <button type="button" className="week-nav-btn" onClick={onPrev} title={prevLabel} aria-label={prevLabel}>
+        <CaretLeft size={16} />
+      </button>
+
+      <button
+        type="button"
+        className="week-nav-center"
+        data-current={viewOffset === 0}
+        onClick={onToday}
+        title={todayLabel}
+        aria-label={`${todayLabel} · ${label}`}
+      >
+        <span className="week-nav-state">
+          <i className={viewOffset === 0 ? "on" : undefined} aria-hidden />
+          {stateLabel}
+        </span>
+        <span className="week-nav-date">{label}</span>
+      </button>
+
+      <button type="button" className="week-nav-btn" onClick={onNext} title={nextLabel} aria-label={nextLabel}>
+        <CaretRight size={16} />
+      </button>
+
+      {viewOffset !== 0 && (
+        <button type="button" className="week-nav-today" onClick={onToday}>
+          <ArrowCounterClockwise size={11} />
+          {todayLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 
 // ─── DASHBOARD CHÍNH ─────────────────────────────────────────────────────────
 export interface ArchivedTaskGroup extends TaskGroup {
@@ -968,7 +1042,42 @@ export default function Dashboard() {
   const navToToday = () => setViewOffset(0);
 
   const centerLabel = getNavLabel(viewOffset);
-  const isAtToday = viewOffset === 0;
+
+  const pageTitle =
+    activeTab === "planner"
+      ? (isVietnamese ? "Kế hoạch" : "Planner")
+      : activeTab === "agenda"
+        ? t.agenda
+        : activeTab === "visions"
+          ? t.visions
+          : t.notes;
+
+  const pageSubtitle =
+    activeTab === "planner"
+      ? (isVietnamese ? "Kế hoạch tuần & quản lý công việc" : "Weekly planning & task management")
+      : activeTab === "agenda"
+        ? (isVietnamese ? "Việc cần làm theo từng thứ trong tuần" : "Tasks by weekday for this week")
+        : activeTab === "visions"
+          ? (isVietnamese ? "Mục tiêu dài hạn và nhóm việc" : "Long-term goals and work groups")
+          : (isVietnamese ? "Ghi chú nhanh trong ngày" : "Quick notes");
+
+  const userInitials = currentUser.fullName
+    ? currentUser.fullName.trim().split(/\s+/).slice(-2).map((part) => part[0]?.toUpperCase()).join("")
+    : "HN";
+
+  const weekNav = (
+    <WeekNavCard
+      viewOffset={viewOffset}
+      label={centerLabel}
+      isVietnamese={isVietnamese}
+      prevLabel={t.prevWeek}
+      nextLabel={t.nextWeek}
+      todayLabel={t.today}
+      onPrev={navToPrev}
+      onNext={navToNext}
+      onToday={navToToday}
+    />
+  );
 
   if (authChecking) {
     return (
@@ -1012,260 +1121,53 @@ export default function Dashboard() {
     >
       <div className="sb-frame">
       {/* ─── TOP BAR ─────────────────────────────────────────────────────── */}
-      <nav
-        id="app-nav"
-        aria-label="Điều hướng ứng dụng"
-        style={{
-          height: 60,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 0.85rem",
-          borderBottom: "1px solid var(--border)",
-          background: "var(--card-bg, #fff)",
-          gap: "0.5rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {/* Nút Hamburger chỉ hiện trên điện thoại */}
+      {/* ─── TOP BAR ─────────────────────────────────────────────────────── */}
+      <nav id="app-nav" className="app-topbar" aria-label="Điều hướng ứng dụng">
+        <div className="topbar-left">
           <button
             type="button"
             className="mobile-hamburger-btn"
             onClick={() => setMobileSidebarOpen((v) => !v)}
-            aria-label="Mở menu danh mục đầu việc"
-            title="Menu đầu việc"
+            aria-label={isVietnamese ? "Mở menu danh mục đầu việc" : "Open categories menu"}
+            title={t.categoriesSection}
           >
             <List size={20} weight="bold" />
           </button>
 
-          {/* Logo */}
-          <Link
-            href="/"
-            className="sb-lockup"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.45rem",
-              textDecoration: "none",
-              flexShrink: 0,
-            }}
-          >
-            <span
-              aria-hidden
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 5,
-                background: "var(--accent)",
-                display: "inline-block",
-              }}
-            />
-            <span
-              style={{
-                fontWeight: 620,
-                fontSize: "0.9375rem",
-                color: "var(--text)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              WeekLoop
-            </span>
-          </Link>
+          <div className="topbar-heading">
+            <h1 className="topbar-title">{pageTitle}</h1>
+            <p className="topbar-subtitle">{pageSubtitle}</p>
+          </div>
         </div>
 
-        {/* Center: Week Navigator (planner & weekly to-do share the same week) */}
-        {activeTab === "planner" || activeTab === "agenda" ? (
-          <div
-            className="nav-center-wrapper"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.25rem",
-            }}
-          >
-            <button
-              id="nav-prev-week"
-              onClick={navToPrev}
-              title={t.prevWeek}
-              aria-label={t.prevWeek}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--border)",
-                background: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-muted)",
-                flexShrink: 0,
-              }}
-            >
-              <CaretLeft size={13} />
-            </button>
+        <div className="topbar-weeknav">
+          {activeTab === "planner" || activeTab === "agenda" ? weekNav : null}
+        </div>
 
-            <div
-              className="nav-center-pill"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.35rem",
-                padding: "0.2rem 0.5rem",
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--border)",
-                background: "var(--bg-alt)",
-                minWidth: 140,
-                justifyContent: "center",
-              }}
-            >
-              <Calendar size={13} color="var(--text-faint)" />
-              <span
-                className="nav-center-label"
-                style={{
-                  fontFamily: "var(--font-geist-mono), monospace",
-                  fontSize: "0.78125rem",
-                  color: "var(--text)",
-                  fontWeight: 500,
-                }}
-              >
-                {centerLabel}
-              </span>
-            </div>
-
-            <button
-              id="nav-next-week"
-              onClick={navToNext}
-              title={t.nextWeek}
-              aria-label={t.nextWeek}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--border)",
-                background: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-muted)",
-                flexShrink: 0,
-              }}
-            >
-              <CaretRight size={13} />
-            </button>
-
-            {!isAtToday && (
-              <button
-                id="nav-today"
-                className="desktop-only-btn"
-                onClick={navToToday}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                  padding: "0.2rem 0.55rem",
-                  borderRadius: "var(--radius-pill)",
-                  border: "1px solid var(--accent)",
-                  background: "var(--accent-bg)",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                  fontSize: "0.75rem",
-                  fontWeight: 550,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <ArrowCounterClockwise size={11} />
-                {t.today}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div />
-        )}
-
-        {/* User menu & Mobile Action */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-          {/* Nút bật Drawer Việc phụ trên điện thoại */}
-          {activeTab === "planner" && (
-            <button
-              type="button"
-              className="mobile-sidepanel-btn"
-              onClick={() => setMobileSidePanelOpen((v) => !v)}
-              aria-label={t.sideTasksTitle}
-              title={t.sideTasksTitle}
-            >
-              <CheckSquare size={17} weight="bold" />
-              {sideTasks.filter((t) => !t.isDone).length > 0 && (
-                <span className="mobile-badge">
-                  {sideTasks.filter((t) => !t.isDone).length}
-                </span>
-              )}
-            </button>
-          )}
-
+        <div className="topbar-actions">
           <Link
             href="/garden"
             id="open-garden"
+            className="topbar-icon-btn"
             title="Văn phòng"
             aria-label="Mở văn phòng việc"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              color: "var(--text-muted)",
-              padding: "0.35rem",
-              borderRadius: "var(--radius)",
-              textDecoration: "none",
-            }}
           >
             <PawPrint size={16} />
           </Link>
           <ThemeToggle size="sm" />
           <LanguageToggle size="sm" />
-
           <button
             id="user-menu-btn"
+            type="button"
+            className="topbar-avatar"
             onClick={() => setShowSettingsModal(true)}
             aria-label={t.settings}
             title={t.settings}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 9999,
-              background: "var(--bg-alt)",
-              border: "1px solid var(--border)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text)",
-              flexShrink: 0,
-              fontWeight: 600,
-              fontSize: "0.75rem",
-            }}
           >
-            {currentUser.fullName ? currentUser.fullName.substring(0, 2).toUpperCase() : "HN"}
-          </button>
-          <button
-            onClick={handleLogout}
-            title={t.logout}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              color: "var(--text-faint)",
-              padding: "0.35rem",
-              borderRadius: "var(--radius)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <SignOut size={16} />
+            {userInitials}
           </button>
         </div>
       </nav>
-
       {/* ─── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <div className="sb-stage" style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
         {/* Backdrop cho Mobile Sidebar Drawer */}
@@ -1282,26 +1184,36 @@ export default function Dashboard() {
           aria-label="Điều hướng chính"
           className={mobileSidebarOpen ? "mobile-drawer-open" : ""}
           style={{
-            width: 220,
+            width: 260,
             flexShrink: 0,
             borderRight: "1px solid var(--border)",
-            background: "var(--bg-alt)",
+            background: "var(--card-bg)",
             display: "flex",
             flexDirection: "column",
             overflowY: "auto",
           }}
         >
-          <div className="sb-brand">
+          <Link href="/" className="sb-brand" style={{ textDecoration: "none" }}>
             <span className="sb-mark" aria-hidden>
               <i />
               <span />
             </span>
             WeekLoop
+          </Link>
+
+          <div className="sb-profile">
+            <span className="sb-profile-avatar" aria-hidden>
+              {userInitials}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <span className="sb-profile-name">{currentUser.fullName || "Huy Nguyễn"}</span>
+              <span className="sb-profile-email">{currentUser.email || "huy@example.com"}</span>
+            </div>
           </div>
 
           {/* Header trong drawer điện thoại */}
           <div className="mobile-drawer-header">
-            <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>{t.categoriesSection}</span>
+            <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text)" }}>{t.categoriesSection}</span>
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
@@ -1312,7 +1224,7 @@ export default function Dashboard() {
           </div>
 
           {/* Main Navigation tabs */}
-          <div style={{ padding: "0.75rem 0.75rem 0.35rem" }}>
+          <div style={{ padding: "0.35rem 10px 0.35rem" }}>
             <SideNavItem
               icon={<Calendar size={15} />}
               label={t.planner}
@@ -1362,20 +1274,8 @@ export default function Dashboard() {
           />
 
           {/* Task Groups Section */}
-          <div style={{ padding: "0.35rem 0.75rem 0.75rem", flex: 1 }}>
-            <p
-              style={{
-                fontSize: "0.75rem",
-                fontWeight: 560,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                color: "var(--text-muted)",
-                marginBottom: "0.45rem",
-                paddingLeft: "0.625rem",
-              }}
-            >
-              {t.categoriesSection}
-            </p>
+          <div style={{ padding: "0.35rem 10px 0.75rem", flex: 1 }}>
+            <p className="sb-section-label">{t.categoriesSection}</p>
 
             {taskGroups.map((g) => {
               const isEditing = editingGroupId === g.id;
@@ -1387,12 +1287,12 @@ export default function Dashboard() {
                   alignItems: "center",
                   justifyContent: "space-between",
                   width: "100%",
-                  padding: "0.32rem 0.55rem 0.32rem 0.625rem",
-                  borderRadius: "var(--radius)",
+                  padding: "4px 10px",
+                  borderRadius: 10,
                   transition: "background 0.12s ease",
                 }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--border)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "none")}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-alt)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", overflow: "hidden", flex: 1 }}>
                   <span
@@ -1444,7 +1344,8 @@ export default function Dashboard() {
                     <span
                       style={{
                         display: "block",
-                        fontSize: "0.8125rem",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
                         color: "var(--text)",
                         letterSpacing: "-0.01em",
                         whiteSpace: "nowrap",
@@ -1463,13 +1364,12 @@ export default function Dashboard() {
                       style={{
                         display: "block",
                         maxWidth: "100%",
-                        marginTop: "0.2rem",
-                        padding: "0.15rem 0.2rem",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-sm)",
-                        background: "var(--bg)",
-                        color: "var(--text-muted)",
-                        fontSize: "0.6875rem",
+                        marginTop: 1,
+                        padding: "0 2px",
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text-faint)",
+                        fontSize: "0.625rem",
                         fontFamily: "inherit",
                         cursor: savingPriorityId !== null ? "wait" : "pointer",
                       }}
@@ -1555,13 +1455,14 @@ export default function Dashboard() {
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                padding: "0.35rem 0.625rem",
-                borderRadius: "var(--radius)",
+                padding: "5px 10px",
+                borderRadius: 10,
                 color: "var(--text-faint)",
-                fontSize: "0.8rem",
-                marginTop: "0.2rem",
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                marginTop: "0.15rem",
               }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent)")}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent-contrast)")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-faint)")}
             >
               <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>+</span>
@@ -1578,7 +1479,8 @@ export default function Dashboard() {
           />
 
           {/* Secondary functions */}
-          <div style={{ padding: "0.6rem 0.75rem" }}>
+          <div style={{ padding: "0.35rem 10px 0.5rem" }}>
+            <p className="sb-section-label">{t.utilitiesSection}</p>
             <SideNavItem
               icon={<Trash size={15} />}
               label={t.trash}
@@ -1599,12 +1501,21 @@ export default function Dashboard() {
               onClick={() => setShowSettingsModal(true)}
             />
           </div>
+
+          <div className="sb-footer">
+            <button type="button" className="sb-logout" onClick={handleLogout}>
+              <SignOut size={15} />
+              {t.logout}
+            </button>
+            <span className="sb-version">WeekLoop v2.0</span>
+          </div>
         </aside>
 
         {/* Content switch */}
         {activeTab === "planner" ? (
           <>
             <main id="main-grid" style={{ flex: 1, overflowY: "auto" }}>
+              <div className="mobile-week-nav">{weekNav}</div>
               {taskGroups.length === 0 ? (
                 <div
                   style={{
@@ -1620,10 +1531,11 @@ export default function Dashboard() {
                 >
                   <div
                     style={{
-                      width: 52,
-                      height: 52,
+                      width: 72,
+                      height: 72,
                       borderRadius: "50%",
-                      background: "var(--accent-bg)",
+                      background: "var(--accent-ghost)",
+                      border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
                       color: "var(--accent)",
                       display: "flex",
                       alignItems: "center",
@@ -1631,24 +1543,24 @@ export default function Dashboard() {
                       marginBottom: "1rem",
                     }}
                   >
-                    <Calendar size={26} weight="duotone" />
+                    <Calendar size={32} weight="duotone" />
                   </div>
                   <h3
                     style={{
-                      fontSize: "1.1rem",
-                      fontWeight: 650,
+                      fontSize: "17px",
+                      fontWeight: 700,
                       color: "var(--text)",
-                      marginBottom: "0.45rem",
+                      marginBottom: "0.4rem",
                     }}
                   >
                     {isVietnamese ? "Bắt đầu kế hoạch tuần của bạn" : "Start your weekly plan"}
                   </h3>
                   <p
                     style={{
-                      fontSize: "0.85rem",
+                      fontSize: "13px",
                       color: "var(--text-muted)",
                       maxWidth: 380,
-                      lineHeight: 1.5,
+                      lineHeight: 1.55,
                       marginBottom: "1.25rem",
                     }}
                   >
@@ -1660,11 +1572,11 @@ export default function Dashboard() {
                     onClick={() => setShowAddGroupModal(true)}
                     className="btn-primary"
                     style={{
-                      padding: "0.5rem 1.1rem",
-                      fontSize: "0.85rem",
+                      padding: "9px 18px",
+                      fontSize: "13px",
                       display: "flex",
                       alignItems: "center",
-                      gap: "0.4rem",
+                      gap: "6px",
                     }}
                   >
                     <Plus size={15} weight="bold" />
@@ -1722,37 +1634,10 @@ export default function Dashboard() {
                 </>
               )}
             </main>
-
-            {/* Backdrop cho Mobile SidePanel Drawer */}
-            {mobileSidePanelOpen && (
-              <div
-                className="mobile-backdrop"
-                onClick={() => setMobileSidePanelOpen(false)}
-              />
-            )}
-
-            <div className={`sidepanel-wrapper ${mobileSidePanelOpen ? "mobile-drawer-open" : ""}`}>
-              {/* Header cho mobile drawer việc phụ */}
-              <div className="mobile-drawer-header">
-                <span style={{ fontWeight: 620, fontSize: "0.875rem", color: "var(--text)" }}>{t.sideTasksTitle}</span>
-                <button
-                  type="button"
-                  onClick={() => setMobileSidePanelOpen(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 4 }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <SidePanel
-                sideTasks={sideTasks}
-                onComplete={handleCompleteSideTask}
-                onAdd={handleAddSideTask}
-                onDelete={handleDeleteSideTask}
-              />
-            </div>
           </>
         ) : activeTab === "agenda" ? (
           <main id="agenda-view" style={{ flex: 1, overflowY: "auto" }}>
+            <div className="mobile-week-nav">{weekNav}</div>
             <WeekAgenda
               viewOffset={viewOffset}
               taskGroups={taskGroups}
@@ -1797,6 +1682,36 @@ export default function Dashboard() {
           </main>
         )}
       </div>
+
+      {/* ─── SIDE PANEL: desktop chỉ ở Planner, mobile là drawer từ mọi tab ─── */}
+      {mobileSidePanelOpen && (
+        <div
+          className="mobile-backdrop"
+          onClick={() => setMobileSidePanelOpen(false)}
+        />
+      )}
+      <div
+        className={`sidepanel-wrapper ${mobileSidePanelOpen ? "mobile-drawer-open" : ""} ${
+          activeTab === "planner" ? "" : "sidepanel-mobile-only"
+        }`}
+      >
+        <div className="mobile-drawer-header">
+          <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text)" }}>{t.sideTasksTitle}</span>
+          <button
+            type="button"
+            onClick={() => setMobileSidePanelOpen(false)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 4 }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <SidePanel
+          sideTasks={sideTasks}
+          onComplete={handleCompleteSideTask}
+          onAdd={handleAddSideTask}
+          onDelete={handleDeleteSideTask}
+        />
+      </div>
       </div>
 
       {/* ─── TOAST ─────────────────────────────────────────────────────────── */}
@@ -1807,6 +1722,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 15 }}
             transition={{ duration: 0.18 }}
+            className="app-toast"
             style={{
               position: "fixed",
               bottom: "1.25rem",
@@ -2498,21 +2414,21 @@ export default function Dashboard() {
             setMobileSidePanelOpen(false);
           }}
         >
-          <Calendar size={19} weight={activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
-          <span>{t.planner}</span>
+          <Calendar size={20} weight={activeTab === "planner" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <span>{isVietnamese ? "Kế hoạch" : "Planner"}</span>
         </button>
 
         <button
           type="button"
-          className={`mobile-bottom-tab ${activeTab === "agenda" && !mobileSidebarOpen ? "active" : ""}`}
+          className={`mobile-bottom-tab ${activeTab === "agenda" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
           onClick={() => {
             setActiveTab("agenda");
             setMobileSidebarOpen(false);
             setMobileSidePanelOpen(false);
           }}
         >
-          <ListChecks size={19} weight={activeTab === "agenda" && !mobileSidebarOpen ? "fill" : "regular"} />
-          <span>{t.agenda}</span>
+          <ListChecks size={20} weight={activeTab === "agenda" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <span>{isVietnamese ? "Cần làm" : "To-do"}</span>
         </button>
 
         <button
@@ -2524,8 +2440,26 @@ export default function Dashboard() {
             setMobileSidePanelOpen(false);
           }}
         >
-          <Flag size={19} weight={activeTab === "visions" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <Flag size={20} weight={activeTab === "visions" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
           <span>{t.visions}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`mobile-bottom-tab ${mobileSidePanelOpen ? "active" : ""}`}
+          onClick={() => {
+            setMobileSidePanelOpen((v) => !v);
+            setMobileSidebarOpen(false);
+          }}
+          aria-label={t.sideTasks}
+        >
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <CheckSquare size={20} weight={mobileSidePanelOpen ? "fill" : "regular"} />
+            {sideTasks.filter((task) => !task.isDone).length > 0 && (
+              <span className="bottom-bar-badge">{sideTasks.filter((task) => !task.isDone).length}</span>
+            )}
+          </div>
+          <span>{t.sideTasks}</span>
         </button>
 
         <button
@@ -2537,20 +2471,8 @@ export default function Dashboard() {
             setMobileSidePanelOpen(false);
           }}
         >
-          <Notebook size={19} weight={activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
+          <Notebook size={20} weight={activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
           <span>{t.notes}</span>
-        </button>
-
-        <button
-          type="button"
-          className={`mobile-bottom-tab ${mobileSidebarOpen ? "active" : ""}`}
-          onClick={() => {
-            setMobileSidebarOpen((v) => !v);
-            setMobileSidePanelOpen(false);
-          }}
-        >
-          <List size={19} weight={mobileSidebarOpen ? "bold" : "regular"} />
-          <span>{t.categoriesSection}</span>
         </button>
       </nav>
 
@@ -2568,20 +2490,25 @@ export default function Dashboard() {
           height: 100%;
         }
 
+        .sidepanel-mobile-only {
+          display: none !important;
+        }
+
         @media (max-width: 767px) {
           .mobile-hamburger-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            background: var(--bg);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
             color: var(--text);
             cursor: pointer;
             flex-shrink: 0;
           }
+          .mobile-hamburger-btn:hover { background: var(--bg-alt); }
           .mobile-sidepanel-btn {
             display: flex;
             align-items: center;
@@ -2626,8 +2553,8 @@ export default function Dashboard() {
             top: 0 !important;
             left: 0 !important;
             bottom: 0 !important;
-            width: 280px !important;
-            max-width: 82vw !important;
+            width: 304px !important;
+            max-width: 86vw !important;
             z-index: 110 !important;
             transform: translateX(-100%);
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2659,6 +2586,9 @@ export default function Dashboard() {
             display: flex !important;
             flex-direction: column !important;
           }
+          .sidepanel-mobile-only {
+            display: flex !important;
+          }
           .sidepanel-wrapper.mobile-drawer-open {
             transform: translateX(0);
           }
@@ -2676,11 +2606,10 @@ export default function Dashboard() {
             bottom: 0;
             left: 0;
             right: 0;
-            height: 56px;
-            background: var(--card-bg, rgba(255, 255, 255, 0.96));
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            height: 60px;
+            background: var(--card-bg);
             border-top: 1px solid var(--border);
+            box-shadow: var(--shadow-bar);
             z-index: 50;
             padding-bottom: env(safe-area-inset-bottom, 0);
           }
@@ -2690,19 +2619,19 @@ export default function Dashboard() {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 2px;
+            gap: 3px;
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 0.6875rem;
+            font-size: 11.5px;
             font-weight: 500;
             padding: 6px 0;
             cursor: pointer;
             transition: color 0.15s ease;
           }
           .mobile-bottom-tab.active {
-            color: var(--accent);
-            font-weight: 600;
+            color: var(--accent-contrast);
+            font-weight: 700;
           }
           .mobile-bottom-tab span {
             max-width: 100%;
@@ -2725,7 +2654,12 @@ export default function Dashboard() {
             line-height: 1.2;
           }
           #main-grid, #agenda-view, #notes-view, #visions-view {
-            padding-bottom: 64px !important;
+            padding-bottom: 72px !important;
+          }
+          .app-toast {
+            bottom: 72px !important;
+            right: 12px !important;
+            left: 12px !important;
           }
           .desktop-only-btn {
             display: none !important;

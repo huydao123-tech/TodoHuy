@@ -89,26 +89,27 @@ function GoalCard({
   return (
     <div
       style={{
-        borderRadius: "var(--radius)",
-        border: "1px solid var(--border-mid)",
-        background: "var(--card-bg, #fff)",
-        marginBottom: "0.625rem",
+        borderRadius: "var(--radius-card)",
+        border: "1px solid var(--border)",
+        background: "var(--card-bg)",
+        marginBottom: 12,
         overflow: "hidden",
-        transition: "box-shadow 0.15s ease",
+        boxShadow: "var(--shadow-soft)",
       }}
     >
-      {/* Tiêu đề thẻ: Tên nhóm đầu việc */}
+      {/* Tiêu đề thẻ: tên nhóm + số việc */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
-          padding: "0.5rem 0.75rem",
+          gap: 10,
+          padding: "10px 12px 8px",
           borderBottom: "1px solid var(--border)",
-          background: "var(--bg-alt)",
+          background: `color-mix(in srgb, ${color} 6%, var(--card-bg))`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
           <span
             style={{
               width: 8,
@@ -116,45 +117,54 @@ function GoalCard({
               borderRadius: 9999,
               background: color,
               flexShrink: 0,
+              marginTop: 5,
             }}
           />
-          <span
-            style={{
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              color: "var(--text)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {name}
-          </span>
-          {currentItems.length > 0 && (
+          <div style={{ minWidth: 0 }}>
             <span
               style={{
-                fontSize: "0.625rem",
-                color: "var(--text-muted)",
-                fontWeight: 600,
-                background: "var(--border)",
-                padding: "0.05rem 0.35rem",
-                borderRadius: "var(--radius-pill)",
+                display: "block",
+                fontSize: "0.875rem",
+                fontWeight: 700,
+                color,
+                letterSpacing: "-0.01em",
+                lineHeight: 1.25,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              {currentItems.length}
+              {name}
             </span>
-          )}
+            <span
+              style={{
+                display: "block",
+                marginTop: 1,
+                fontSize: "0.6875rem",
+                fontWeight: 500,
+                color: "var(--text-muted)",
+              }}
+            >
+              {currentItems.length > 0
+                ? `${currentItems.length} ${t.taskCount}`
+                : (isVietnamese ? "Chưa có việc" : "No tasks")}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
           {isPast ? (
             <span
               style={{
-                fontSize: "0.625rem",
-                fontWeight: 650,
-                padding: "0.1rem 0.4rem",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--border)",
+                fontSize: "0.59375rem",
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 8,
+                background: "var(--bg-alt)",
+                border: "1px solid var(--border)",
                 color: "var(--text-muted)",
                 letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
               }}
             >
               {t.pastWeekBadge}
@@ -196,21 +206,22 @@ function GoalCard({
       {localItems.length === 0 && !isAddingItem && (
         <div
           style={{
-            padding: "0.625rem 0.75rem",
+            padding: "12px",
             color: "var(--text-faint)",
-            fontSize: "0.78125rem",
+            fontSize: "0.75rem",
             fontStyle: "italic",
+            lineHeight: 1.4,
           }}
         >
           {isPast
             ? (isVietnamese ? "Không có công việc nào" : "No tasks")
-            : (isVietnamese ? "Chưa có công việc nào trong tuần này" : "No tasks for this week")}
+            : (isVietnamese ? "Chưa có công việc nào. Thêm công việc bên dưới..." : "No tasks yet. Add one below...")}
         </div>
       )}
 
       {/* Danh sách công việc (Work Items) */}
       {localItems.length > 0 && (
-        <div style={{ padding: "0.375rem 0.75rem 0" }}>
+        <div style={{ padding: "2px 6px" }}>
           {localItems.map((item) => {
             const isEditing = editingItemId === item.id;
             return (
@@ -219,9 +230,10 @@ function GoalCard({
                 style={{
                   display: "flex",
                   alignItems: "flex-start",
-                  gap: "0.4rem",
-                  padding: "0.28rem 0",
+                  gap: "6px",
+                  padding: "9px 8px",
                   width: "100%",
+                  borderRadius: 10,
                 }}
               >
                 {isEditing ? (
@@ -250,12 +262,14 @@ function GoalCard({
                     }}
                     style={{
                       flex: 1,
-                      fontSize: "0.8rem",
-                      padding: "0.1rem 0.2rem",
+                      fontSize: "0.8125rem",
+                      padding: "6px 8px",
                       border: "1px solid var(--accent)",
-                      borderRadius: "var(--radius-sm)",
+                      borderRadius: 10,
                       outline: "none",
                       fontFamily: "inherit",
+                      background: "var(--card-bg)",
+                      color: "var(--text)",
                     }}
                   />
                 ) : (
@@ -287,12 +301,13 @@ function GoalCard({
                       if (actions) actions.style.opacity = "0";
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flex: 1, minWidth: 0, paddingRight: "0.4rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0, paddingRight: "0.4rem" }}>
                       <span
                         style={{
-                          fontSize: "0.8rem",
-                          color: "var(--text-muted)",
-                          lineHeight: 1.45,
+                          fontSize: "0.875rem",
+                          fontWeight: 500,
+                          color: "var(--text)",
+                          lineHeight: 1.35,
                           wordBreak: "break-word",
                         }}
                       >
@@ -304,12 +319,12 @@ function GoalCard({
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
-                            color: "var(--accent)",
+                            color: "var(--accent-contrast)",
                             flexShrink: 0,
                             opacity: 0.9,
                           }}
                         >
-                          <FileText size={12} weight="fill" />
+                          <FileText size={14} weight="fill" />
                         </span>
                       )}
                     </div>
@@ -393,18 +408,17 @@ function GoalCard({
                               onMoveTaskToCurrentWeek(groupId, absoluteOffset, item.id);
                             }}
                             style={{
-                              background: "var(--bg-alt)",
-                              border: "1px solid var(--border)",
-                              borderRadius: "var(--radius-pill)",
+                              background: "var(--accent-ghost)",
+                              border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+                              borderRadius: 8,
                               cursor: "pointer",
-                              color: "var(--accent)",
-                              padding: "0.2rem 0.5rem",
+                              color: "var(--accent-contrast)",
+                              padding: "3px 8px",
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: "0.25rem",
-                              fontSize: "0.6875rem",
+                              gap: "4px",
+                              fontSize: "0.71875rem",
                               fontWeight: 600,
-                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                               transition: "all 0.15s ease",
                             }}
                             onMouseEnter={(e) => {
@@ -412,8 +426,8 @@ function GoalCard({
                               (e.currentTarget as HTMLElement).style.color = "#fff";
                             }}
                             onMouseLeave={(e) => {
-                              (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
-                              (e.currentTarget as HTMLElement).style.color = "var(--accent)";
+                              (e.currentTarget as HTMLElement).style.background = "var(--accent-ghost)";
+                              (e.currentTarget as HTMLElement).style.color = "var(--accent-contrast)";
                             }}
                             title={isVietnamese ? "Dời sang tuần này" : "Move to this week"}
                           >
@@ -436,9 +450,10 @@ function GoalCard({
         <form
           onSubmit={handleAddItem}
           style={{
-            padding: "0.375rem 0.75rem 0.5rem",
+            padding: "8px 10px 10px",
             display: "flex",
-            gap: "0.375rem",
+            gap: 6,
+            borderTop: "1px solid var(--border)",
           }}
         >
           <input
@@ -448,20 +463,24 @@ function GoalCard({
             placeholder={isVietnamese ? "Nhập tên công việc..." : "Enter task name..."}
             autoFocus
             style={{
-              fontSize: "0.8rem",
-              padding: "0.25rem 0.4rem",
-              borderRadius: "var(--radius)",
+              fontSize: "0.8125rem",
+              padding: "8px 10px",
+              borderRadius: 10,
               border: "1px solid var(--accent)",
               outline: "none",
               width: "100%",
+              background: "var(--card-bg)",
+              color: "var(--text)",
+              fontFamily: "inherit",
             }}
           />
           <button
             type="submit"
             style={{
               fontSize: "0.75rem",
-              padding: "0.2rem 0.5rem",
-              borderRadius: "var(--radius)",
+              fontWeight: 600,
+              padding: "0 10px",
+              borderRadius: 10,
               background: "var(--accent)",
               color: "#fff",
               border: "none",
@@ -476,8 +495,8 @@ function GoalCard({
             onClick={() => setIsAddingItem(false)}
             style={{
               fontSize: "0.75rem",
-              padding: "0.2rem 0.4rem",
-              borderRadius: "var(--radius)",
+              padding: "0 8px",
+              borderRadius: 10,
               background: "none",
               color: "var(--text-muted)",
               border: "1px solid var(--border)",
@@ -491,25 +510,26 @@ function GoalCard({
 
       {/* Nút thêm công việc (chỉ ở tuần hiện tại hoặc tương lai) */}
       {!isPast && !isAddingItem && (
-        <div style={{ padding: "0.25rem 0.75rem 0.5rem" }}>
+        <div style={{ padding: "2px 10px 10px", borderTop: "1px solid var(--border)" }}>
           <button
             onClick={() => setIsAddingItem(true)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.25rem",
+              gap: "5px",
               background: "none",
               border: "none",
               cursor: "pointer",
-              padding: "0.2rem 0",
-              color: "var(--text-faint)",
-              fontSize: "0.75rem",
+              padding: "8px 0 6px",
+              color: "var(--text-muted)",
+              fontSize: "0.8125rem",
+              fontWeight: 500,
               transition: "color 0.12s ease",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-faint)")}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--accent-contrast)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
           >
-            <Plus size={11} />
+            <Plus size={13} />
             <span>{t.addWorkItem}</span>
           </button>
         </div>
@@ -582,7 +602,6 @@ function WeekColumn({
         display: "flex",
         flexDirection: "column",
         flex: 1,
-        borderRight: colOffset < 1 ? "1px solid var(--border-mid)" : "none",
         minWidth: 0,
       }}
     >
@@ -593,32 +612,34 @@ function WeekColumn({
           top: 0,
           zIndex: 10,
           background: "var(--bg)",
-          padding: "0.75rem 1rem 0.625rem",
+          padding: "16px 20px 10px",
           borderBottom: "2px solid",
-          borderBottomColor: isCenterCol ? "var(--accent)" : "var(--border-mid)",
+          borderBottomColor: isCenterCol ? "var(--accent)" : "var(--border)",
         }}
       >
         <p
           style={{
             fontFamily: "var(--font-geist-mono), monospace",
             fontSize: "0.625rem",
+            fontWeight: 700,
             textTransform: "uppercase",
-            letterSpacing: "0.16em",
-            color: isCenterCol ? "var(--accent)" : "var(--text-faint)",
-            marginBottom: "0.2rem",
+            letterSpacing: "0.14em",
+            color: isCenterCol ? "var(--accent-contrast)" : "var(--text-faint)",
+            marginBottom: "3px",
           }}
         >
           {colLabel}
           {isRealCurrentWeek && isCenterCol && (
             <span
               style={{
-                marginLeft: "0.4rem",
+                marginLeft: "6px",
                 background: "var(--accent-bg)",
-                color: "var(--accent)",
-                borderRadius: "var(--radius-pill)",
-                padding: "0.05rem 0.375rem",
-                fontSize: "0.5625rem",
-                fontWeight: 600,
+                color: "var(--accent-contrast)",
+                borderRadius: 8,
+                padding: "1px 6px",
+                fontSize: "0.59375rem",
+                fontWeight: 700,
+                letterSpacing: 0,
               }}
             >
               {t.today}
@@ -628,8 +649,9 @@ function WeekColumn({
         <p
           style={{
             fontSize: "0.8125rem",
-            color: "var(--text-muted)",
-            fontWeight: 500,
+            color: "var(--text)",
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
           }}
         >
           {getWeekRange(absoluteOffset)}
@@ -637,7 +659,7 @@ function WeekColumn({
       </div>
 
       {/* Danh sách thẻ nhóm đầu việc */}
-      <div style={{ padding: "0.875rem", flex: 1, position: "relative" }}>
+      <div style={{ padding: "12px 6px 12px", flex: 1, position: "relative" }}>
         <AnimatePresence mode="popLayout">
           {visibleGroups.map((g, i) => {
             const key = `${g.id}:${absoluteOffset}`;
@@ -679,10 +701,10 @@ function WeekColumn({
         {visibleGroups.length === 0 && (
           <div
             style={{
-              padding: "2rem 1rem",
+              padding: "24px 16px",
               textAlign: "center",
               border: "1px dashed var(--border)",
-              borderRadius: "var(--radius)",
+              borderRadius: 12,
               color: "var(--text-faint)",
               fontSize: "0.8125rem",
               marginBottom: "0.75rem",
@@ -694,7 +716,7 @@ function WeekColumn({
 
         {/* Nút thêm đầu việc vào tuần này */}
         {!isPast && (
-          <div style={{ position: "relative", marginTop: "0.25rem" }}>
+          <div style={{ position: "relative", marginTop: 4 }}>
             <button
               onClick={() => {
                 if (excludedGroups.length > 0) {
@@ -706,22 +728,22 @@ function WeekColumn({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.35rem",
+                gap: "6px",
                 width: "100%",
-                padding: "0.45rem 0.65rem",
-                borderRadius: "var(--radius)",
+                padding: "10px 12px",
+                borderRadius: 12,
                 border: "1px dashed var(--border)",
                 background: "transparent",
                 color: "var(--text-muted)",
-                fontSize: "0.75rem",
+                fontSize: "0.8125rem",
                 fontWeight: 500,
                 cursor: "pointer",
                 transition: "all 0.15s ease",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)";
-                (e.currentTarget as HTMLElement).style.color = "var(--text)";
-                (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+                (e.currentTarget as HTMLElement).style.color = "var(--accent-contrast)";
+                (e.currentTarget as HTMLElement).style.background = "var(--accent-ghost)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
@@ -1062,59 +1084,28 @@ export default function WeekGrid({
         }
         .week-grid-columns {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
           min-height: 100%;
           width: 100%;
-          align-items: stretch;
+          align-items: start;
+          padding: 16px 18px 32px;
         }
         .week-col-wrapper {
           display: flex;
           flex-direction: column;
           min-height: 100%;
+          min-width: 0;
         }
         @media (max-width: 767px) {
+          /* Mobile: week navigator nằm trên nội dung (Dashboard), không lặp thêm 3 tab cột. */
           .mobile-week-tabs {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.35rem;
-            padding: 0.5rem 0.75rem;
-            background: var(--bg);
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 25;
-          }
-          .mobile-week-tab {
-            flex: 1;
-            padding: 0.45rem 0.5rem;
-            border-radius: var(--radius-pill);
-            border: 1px solid var(--border);
-            background: var(--card-bg, #fff);
-            color: var(--text-muted);
-            font-size: 0.78125rem;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.25rem;
-            transition: all 0.15s ease;
-          }
-          .mobile-week-tab.active {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-            font-weight: 600;
-            box-shadow: 0 1px 4px rgba(22, 163, 74, 0.25);
-          }
-          .mobile-week-tab .today-dot {
-            font-size: 0.5rem;
-            color: #fff;
+            display: none !important;
           }
           .week-grid-columns {
             display: block !important;
             width: 100% !important;
+            padding: 8px 0 24px !important;
           }
           .week-col-wrapper.mobile-hidden {
             display: none !important;

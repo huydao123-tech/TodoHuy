@@ -215,8 +215,8 @@ export default function TaskDetailModal({
                       disabled={isPast}
                       className={`task-status-btn ${isActive ? "active" : ""}`}
                       style={{
-                        borderColor: isActive ? opt.color : "var(--border)",
-                        backgroundColor: isActive ? opt.bg : "var(--card-bg, #fff)",
+                        border: `${isActive ? "1.5px" : "1px"} solid ${isActive ? opt.color : "var(--border)"}`,
+                        backgroundColor: isActive ? opt.bg : "var(--card-bg)",
                         color: isActive ? opt.color : "var(--text-muted)",
                         fontWeight: isActive ? 600 : 500,
                         cursor: isPast ? "not-allowed" : "pointer",
@@ -248,7 +248,7 @@ export default function TaskDetailModal({
               placeholder={isVietnamese ? "Nhập tên công việc..." : "Enter task name..."}
               className="task-title-input"
               style={{
-                background: isPast ? "var(--bg-alt)" : "var(--input-bg, #fff)",
+                color: isPast ? "var(--text-muted)" : "var(--text)",
                 cursor: isPast ? "not-allowed" : "text",
               }}
             />
@@ -276,7 +276,8 @@ export default function TaskDetailModal({
               className="task-note-textarea"
               rows={6}
               style={{
-                background: isPast ? "var(--bg-alt)" : "#fff",
+                background: "var(--bg-alt)",
+                color: isPast ? "var(--text-muted)" : "var(--text)",
                 cursor: isPast ? "not-allowed" : "text",
               }}
             />
@@ -411,14 +412,14 @@ export default function TaskDetailModal({
         .task-modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.48);
+          background: rgba(0, 0, 0, 0.54);
           backdrop-filter: blur(4px);
           -webkit-backdrop-filter: blur(4px);
           z-index: 200;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 1rem;
+          padding: 16px;
           animation: modalFadeIn 0.18s ease-out forwards;
         }
 
@@ -428,11 +429,12 @@ export default function TaskDetailModal({
         }
 
         .task-modal-container {
-          background: var(--bg);
+          background: var(--card-bg);
           width: 100%;
-          max-width: 580px;
-          border-radius: var(--radius-lg, 12px);
-          box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.06);
+          max-width: 600px;
+          border-radius: 20px;
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow-elevated);
           display: flex;
           flex-direction: column;
           max-height: 88vh;
@@ -449,9 +451,9 @@ export default function TaskDetailModal({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.875rem 1.25rem;
+          padding: 16px 24px;
           border-bottom: 1px solid var(--border);
-          background: var(--bg-alt, #fafaf9);
+          background: var(--card-bg);
         }
 
         .task-modal-badges {
@@ -464,33 +466,33 @@ export default function TaskDetailModal({
         .task-group-badge {
           display: inline-flex;
           align-items: center;
-          gap: 0.35rem;
-          font-size: 0.75rem;
+          gap: 6px;
+          font-size: 12px;
           font-weight: 600;
-          padding: 0.25rem 0.6rem;
-          border-radius: var(--radius-pill, 9999px);
+          padding: 4px 10px;
+          border-radius: 12px;
           border: 1px solid transparent;
         }
 
         .task-week-badge {
           display: inline-flex;
           align-items: center;
-          gap: 0.35rem;
-          font-size: 0.75rem;
+          gap: 5px;
+          font-size: 11.5px;
           color: var(--text-muted);
-          background: var(--card-bg, #fff);
+          background: var(--bg-alt);
           border: 1px solid var(--border);
-          padding: 0.25rem 0.6rem;
-          border-radius: var(--radius-pill, 9999px);
+          padding: 4px 9px;
+          border-radius: 8px;
         }
 
         .task-modal-close-btn {
           background: transparent;
           border: none;
           color: var(--text-muted);
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -498,28 +500,29 @@ export default function TaskDetailModal({
           transition: background 0.15s, color 0.15s;
         }
         .task-modal-close-btn:hover {
-          background: rgba(0, 0, 0, 0.06);
+          background: var(--bg-alt);
           color: var(--text);
         }
 
         .task-modal-body {
-          padding: 1.25rem;
+          padding: 20px 24px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 1.15rem;
+          gap: 18px;
         }
 
         .task-field-group {
           display: flex;
           flex-direction: column;
-          gap: 0.4rem;
+          gap: 6px;
         }
 
         .task-field-label {
-          font-size: 0.8125rem;
+          font-size: 12px;
           font-weight: 600;
-          color: var(--text);
+          letter-spacing: 0.5px;
+          color: var(--text-muted);
           display: flex;
           align-items: center;
         }
@@ -529,57 +532,57 @@ export default function TaskDetailModal({
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 0.25rem;
+          gap: 4px;
         }
 
         .task-note-hint {
-          font-size: 0.6875rem;
+          font-size: 11px;
           color: var(--text-faint);
         }
 
         .task-status-selector {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         .task-status-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.4rem;
-          padding: 0.5rem 0.75rem;
-          border-radius: var(--radius, 8px);
+          gap: 6px;
+          padding: 12px 8px;
+          border-radius: 12px;
           border: 1px solid var(--border);
-          font-size: 0.8125rem;
+          font-size: 12px;
           cursor: pointer;
           transition: all 0.15s ease;
         }
 
         .task-title-input {
           width: 100%;
-          font-size: 0.9375rem;
-          font-weight: 500;
-          padding: 0.55rem 0.75rem;
-          border-radius: var(--radius, 8px);
-          border: 1px solid var(--border);
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.3px;
+          line-height: 1.3;
+          padding: 2px 0;
+          border-radius: 8px;
+          border: none;
           outline: none;
           color: var(--text);
-          background: var(--bg-alt);
-          transition: border-color 0.15s, box-shadow 0.15s;
+          background: transparent;
           box-sizing: border-box;
         }
         .task-title-input:focus {
-          border-color: var(--accent);
-          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+          box-shadow: 0 1px 0 var(--accent);
         }
 
         .task-note-textarea {
           width: 100%;
-          font-size: 0.875rem;
+          font-size: 14px;
           line-height: 1.55;
-          padding: 0.75rem;
-          border-radius: var(--radius, 8px);
+          padding: 12px;
+          border-radius: 12px;
           border: 1px solid var(--border);
           outline: none;
           color: var(--text);
@@ -592,16 +595,17 @@ export default function TaskDetailModal({
         }
         .task-note-textarea:focus {
           border-color: var(--accent);
-          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
         }
 
         .task-modal-footer {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.875rem 1.25rem;
+          gap: 8px;
+          padding: 16px 24px;
           border-top: 1px solid var(--border);
-          background: var(--bg-alt, #fafaf9);
+          background: var(--card-bg);
         }
 
         .task-footer-left {
@@ -612,22 +616,23 @@ export default function TaskDetailModal({
         .task-delete-btn {
           display: flex;
           align-items: center;
-          gap: 0.35rem;
+          gap: 6px;
           background: transparent;
-          border: 1px solid transparent;
-          color: var(--red, #ef4444);
-          font-size: 0.8125rem;
-          padding: 0.45rem 0.65rem;
-          border-radius: var(--radius, 8px);
+          border: 1px solid var(--border);
+          color: var(--danger);
+          font-size: 13px;
+          padding: 8px 12px;
+          border-radius: 12px;
           cursor: pointer;
           transition: all 0.15s ease;
         }
         .task-delete-btn:hover {
-          background: rgba(239, 68, 68, 0.08);
-          border-color: rgba(239, 68, 68, 0.2);
+          background: var(--danger-bg);
+          border-color: color-mix(in srgb, var(--danger) 35%, transparent);
         }
         .task-delete-btn.confirm-delete {
-          background: var(--red, #ef4444);
+          background: var(--danger);
+          border-color: var(--danger);
           color: #ffffff;
           font-weight: 600;
         }
@@ -635,22 +640,23 @@ export default function TaskDetailModal({
         .task-footer-right {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         .task-shortcut-hint {
-          font-size: 0.6875rem;
+          font-size: 11px;
           color: var(--text-faint);
-          margin-right: 0.25rem;
+          margin-right: 4px;
         }
 
         .task-cancel-btn {
-          background: var(--card-bg, #fff);
+          background: var(--card-bg);
           border: 1px solid var(--border);
           color: var(--text-muted);
-          font-size: 0.8125rem;
-          padding: 0.45rem 0.85rem;
-          border-radius: var(--radius, 8px);
+          font-size: 13px;
+          font-weight: 500;
+          padding: 8px 14px;
+          border-radius: 12px;
           cursor: pointer;
           transition: background 0.15s, color 0.15s;
         }
@@ -662,20 +668,20 @@ export default function TaskDetailModal({
         .task-save-btn {
           display: flex;
           align-items: center;
-          gap: 0.4rem;
-          background: var(--accent, #16a34a);
+          gap: 6px;
+          background: var(--accent);
           border: none;
           color: #ffffff;
-          font-size: 0.8125rem;
+          font-size: 13px;
           font-weight: 600;
-          padding: 0.45rem 1rem;
-          border-radius: var(--radius, 8px);
+          padding: 9px 18px;
+          border-radius: 12px;
           cursor: pointer;
-          box-shadow: 0 1px 3px rgba(22, 163, 74, 0.3);
-          transition: opacity 0.15s, transform 0.15s;
+          box-shadow: 0 2px 8px rgba(22, 163, 74, 0.22);
+          transition: opacity 0.15s, transform 0.15s, background 0.15s;
         }
         .task-save-btn:hover:not(:disabled) {
-          opacity: 0.92;
+          background: var(--accent-dark);
         }
         .task-save-btn:disabled {
           opacity: 0.5;
@@ -690,8 +696,10 @@ export default function TaskDetailModal({
           }
           .task-modal-container {
             max-width: 100% !important;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
+            border-radius: 24px 24px 0 0;
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
             max-height: 92vh;
             border-top: 1px solid var(--border);
             animation: modalSlideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -701,22 +709,22 @@ export default function TaskDetailModal({
             to { transform: translateY(0); }
           }
           .task-modal-header {
-            padding: 0.75rem 1rem;
+            padding: 12px 16px;
           }
           .task-modal-body {
-            padding: 1rem;
-            gap: 1rem;
+            padding: 16px;
+            gap: 16px;
           }
           .task-modal-footer {
-            padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0));
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
           }
           .task-shortcut-hint {
             display: none;
           }
           .task-status-btn {
-            padding: 0.45rem 0.35rem;
-            font-size: 0.75rem;
-            gap: 0.25rem;
+            padding: 10px 6px;
+            font-size: 11.5px;
+            gap: 4px;
           }
           .task-note-textarea {
             min-height: 120px;

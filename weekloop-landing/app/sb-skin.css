@@ -1,46 +1,14 @@
-/* Khung nhìn của app: nền, chữ, nút và sidebar theo Second Brain. Landing giữ token cũ. */
+/* Khung nhìn của app: shell + skin theo UI-DESIGN-REPORT.md (phương án B).
+   Nền giấy ấm, accent emerald duy nhất, card viền 1px + radius 16, Inter. */
 
 #app-shell,
 .login-root {
-  --bg: #fafafa;
-  --bg-alt: #e7e8ec;
-  --bg-dark: #2c2c2c;
-  --card-bg: #ffffff;
-  --input-bg: #ffffff;
-  --nav-bg-scrolled: rgba(244, 244, 246, 0.92);
-  --text: #2c2c2c;
-  --text-muted: #707070;
-  --text-faint: #8b8b8b;
-  --border: #f3f3f5;
-  --border-mid: #e4e4e7;
-  --accent: #4f46e5;
-  --accent-dark: #4338ca;
-  --accent-bg: #eef2ff;
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
   color: var(--text);
   font-family: var(--font-inter), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
-[data-theme="dark"] #app-shell,
-[data-theme="dark"] .login-root {
-  --bg: #05060f;
-  --bg-alt: #171a26;
-  --bg-dark: #e9edf5;
-  --card-bg: #0f111a;
-  --input-bg: #0f111a;
-  --nav-bg-scrolled: rgba(5, 6, 15, 0.92);
-  --text: #e9edf5;
-  --text-muted: #8b93a7;
-  --text-faint: #6f7890;
-  --border: rgba(160, 180, 220, 0.12);
-  --border-mid: rgba(160, 180, 220, 0.16);
-  --accent: #a5b4fc;
-  --accent-dark: #c7d2fe;
-  --accent-bg: rgba(165, 180, 252, 0.14);
-}
-
+/* ─── SHELL ─────────────────────────────────────────────── */
 #app-shell {
   height: 100dvh;
   overflow: hidden;
@@ -49,8 +17,8 @@
 
 .sb-frame {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr) auto;
-  grid-template-rows: 4rem minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr) auto;
+  grid-template-rows: 64px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
 }
@@ -58,9 +26,9 @@
 #app-nav {
   grid-column: 2 / -1;
   grid-row: 1;
-  height: 4rem !important;
+  height: 64px !important;
   background: var(--bg) !important;
-  border-bottom: 1px solid var(--border-mid) !important;
+  border-bottom: 1px solid var(--border) !important;
 }
 
 .sb-stage {
@@ -70,33 +38,35 @@
 #app-sidebar {
   grid-column: 1;
   grid-row: 1 / -1;
-  width: 16rem !important;
+  width: 260px !important;
   background: var(--card-bg) !important;
-  border-right: 1px solid var(--border-mid) !important;
+  border-right: 1px solid var(--border) !important;
 }
 
 .sb-brand {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  height: 4rem;
-  padding: 0 1rem;
+  height: 64px;
+  padding: 0 1.25rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.875rem;
-  font-weight: 650;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   color: var(--text);
 }
 
 .sb-mark {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
-  background: var(--accent);
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #16a34a 0%, #0d9488 100%);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding-left: 6px;
+  padding-left: 7px;
   flex: none;
 }
 
@@ -108,15 +78,15 @@
 }
 
 .sb-mark i {
-  width: 14px;
+  width: 16px;
   height: 5px;
 }
 
 .sb-mark span {
-  width: 10px;
+  width: 11px;
   height: 5px;
   margin-top: 3px;
-  margin-left: 4px;
+  margin-left: 5px;
 }
 
 #main-grid,
@@ -130,12 +100,22 @@
   background: var(--bg);
 }
 
+/* Nội dung rộng tối đa 1440px, căn giữa trên màn hình lớn. */
+#main-grid > .week-grid-container,
+#agenda-view > .agenda-shell,
+#visions-view > *,
+#notes-view > * {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
 .sidepanel-wrapper {
   grid-column: 3;
   grid-row: 2;
   min-height: 0;
   background: var(--card-bg);
-  border-left: 1px solid var(--border-mid);
+  border-left: 1px solid var(--border);
 }
 
 #app-shell #side-panel {
@@ -143,20 +123,71 @@
   border-left: none !important;
 }
 
-@media (min-width: 768px) {
-  .sb-lockup {
-    display: none !important;
+.sb-lockup {
+  display: none;
+}
+
+/* ─── CONTROL CHUNG TRONG APP (radius/shadow theo báo cáo) ── */
+#app-shell .btn-primary,
+.login-root .btn-primary {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.18);
+}
+
+#app-shell .btn-primary:hover,
+.login-root .btn-primary:hover {
+  background: var(--accent-dark);
+  box-shadow: 0 2px 10px rgba(22, 163, 74, 0.24);
+}
+
+#app-shell .btn-ghost,
+.login-root .btn-ghost {
+  border-radius: 12px;
+  font-weight: 500;
+  background: var(--card-bg);
+}
+
+#app-shell .btn-ghost:hover,
+.login-root .btn-ghost:hover {
+  background: var(--bg-alt);
+  border-color: var(--border);
+}
+
+#app-shell :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#app-shell input::placeholder,
+#app-shell textarea::placeholder {
+  color: var(--text-faint);
+}
+
+/* ─── RESPONSIVE ────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .sb-frame {
+    grid-template-columns: 232px minmax(0, 1fr) auto;
+  }
+
+  #app-sidebar {
+    width: 232px !important;
   }
 }
 
 @media (max-width: 767px) {
+  .sb-lockup {
+    display: flex !important;
+  }
+
   .sb-frame {
     display: flex;
     flex-direction: column;
   }
 
   #app-nav {
-    height: 60px !important;
+    height: 56px !important;
   }
 
   .sb-stage {
@@ -170,4 +201,325 @@
   .sb-brand {
     display: none;
   }
+}
+
+/* --- TOP BAR (AppBar) ----------------------------------- */
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+  background: var(--bg);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar-heading { min-width: 0; }
+
+.topbar-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-subtitle {
+  margin: 1px 0 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-weeknav {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.topbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.topbar-icon-btn:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.topbar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  background: var(--accent-bg);
+  color: var(--accent-contrast);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* --- WEEK NAVIGATOR ------------------------------------- */
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.week-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-alt);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.week-nav-btn:hover { background: var(--border); color: var(--text); }
+
+.week-nav-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 132px;
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.week-nav-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.week-nav-state i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-mid);
+}
+
+.week-nav-state i.on { background: var(--accent); }
+
+.week-nav-center[data-current="true"] .week-nav-state { color: var(--accent-contrast); }
+
+.week-nav-date {
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-nav-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent-contrast);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+.mobile-week-nav { display: none; }
+
+/* --- SIDEBAR PROFILE / FOOTER --------------------------- */
+.sb-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 12px;
+}
+
+.sb-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #16a34a 0%, #0d9488 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.sb-profile-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-profile-email {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 6px;
+  padding-left: 10px;
+}
+
+.sb-footer {
+  padding: 10px 20px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sb-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.sb-version {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* --- MOBILE BOTTOM NAV ---------------------------------- */
+.mobile-bottom-bar {
+  background: var(--card-bg) !important;
+  border-top: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-bar);
+}
+
+.mobile-bottom-tab {
+  color: var(--text-muted) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  gap: 3px !important;
+  padding: 6px 0 !important;
+}
+
+.mobile-bottom-tab.active {
+  color: var(--accent-contrast) !important;
+  font-weight: 700 !important;
+}
+
+/* --- APP TOAST ------------------------------------------ */
+.app-toast {
+  background: #18181b !important;
+  color: #fafafa !important;
+  border-radius: 12px !important;
+  font-size: 13.5px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+.app-toast button { font-family: inherit; }
+
+/* --- RESPONSIVE TOP BAR --------------------------------- */
+@media (max-width: 1023px) {
+  .topbar-subtitle { display: none; }
+  .week-nav-center { min-width: 116px; }
+}
+
+@media (max-width: 767px) {
+  .app-topbar { padding: 0 12px; gap: 8px; }
+  .topbar-title { font-size: 17px; letter-spacing: -0.3px; }
+  .topbar-weeknav { display: none; }
+  .topbar-actions { gap: 2px; }
+  .topbar-icon-btn { width: 30px; height: 30px; }
+  .topbar-avatar { width: 30px; height: 30px; font-size: 11px; }
+  .mobile-week-nav {
+    display: block;
+    padding: 8px 12px 0;
+    background: var(--bg);
+  }
+  .mobile-week-nav .week-nav { justify-content: space-between; }
+  .mobile-week-nav .week-nav-center { flex: 1; min-width: 0; }
+  .week-nav-today { display: none; }
+  .sb-profile { padding: 12px 16px 8px; }
 }
