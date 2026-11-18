@@ -1201,16 +1201,6 @@ export default function Dashboard() {
             WeekLoop
           </Link>
 
-          <div className="sb-profile">
-            <span className="sb-profile-avatar" aria-hidden>
-              {userInitials}
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <span className="sb-profile-name">{currentUser.fullName || "Huy Nguyễn"}</span>
-              <span className="sb-profile-email">{currentUser.email || "huy@example.com"}</span>
-            </div>
-          </div>
-
           {/* Header trong drawer điện thoại */}
           <div className="mobile-drawer-header">
             <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text)" }}>{t.categoriesSection}</span>
@@ -1503,6 +1493,15 @@ export default function Dashboard() {
           </div>
 
           <div className="sb-footer">
+            <div className="sb-profile">
+              <span className="sb-profile-avatar" aria-hidden>
+                {userInitials}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <span className="sb-profile-name">{currentUser.fullName || "Huy Nguyễn"}</span>
+                <span className="sb-profile-email">{currentUser.email || "huy@example.com"}</span>
+              </div>
+            </div>
             <button type="button" className="sb-logout" onClick={handleLogout}>
               <SignOut size={15} />
               {t.logout}
