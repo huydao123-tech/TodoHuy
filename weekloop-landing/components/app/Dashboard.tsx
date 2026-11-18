@@ -44,9 +44,11 @@ import { useLanguage } from "@/lib/languageContext";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import WeekGrid from "@/components/app/WeekGrid";
+import WeekAgenda from "@/components/app/WeekAgenda";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
 import VisionsBoard, { VisionLens } from "@/components/app/VisionsBoard";
+import { normalizeDaysOfWeek, type DayAssignment } from "@/lib/weekAgenda";
 import {
   CaretLeft,
   CaretRight,
@@ -63,6 +65,7 @@ import {
   Notebook,
   PencilSimple,
   List,
+  ListChecks,
   CheckSquare,
   Flag,
 } from "@phosphor-icons/react";
@@ -164,7 +167,7 @@ export default function Dashboard() {
   const { t, lang, setLang, isVietnamese } = useLanguage();
   const [authChecking, setAuthChecking] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<"planner" | "visions" | "notes">("planner");
+  const [activeTab, setActiveTab] = useState<"planner" | "agenda" | "visions" | "notes">("planner");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileSidePanelOpen, setMobileSidePanelOpen] = useState(false);
 
@@ -195,6 +198,16 @@ export default function Dashboard() {
 
   const [goalsMap, setGoalsMap] = useState<Record<string, string>>({});
   const [workItemsMap, setWorkItemsMap] = useState<Record<string, WorkItemData[]>>({});
+
+  // Số việc chưa xong của tuần đang xem, hiện trên mục "Việc cần làm" ở sidebar.
+  const agendaPendingCount = useMemo(
+    () =>
+      taskGroups.reduce((total, group) => {
+        const items = workItemsMap[`${group.id}:${viewOffset}`] ?? [];
+        return total + items.filter((item) => item.status !== "DONE").length;
+      }, 0),
+    [taskGroups, workItemsMap, viewOffset],
+  );
 
   const [toast, setToast] = useState<{
     text: string;
@@ -264,6 +277,7 @@ export default function Dashboard() {
             content: item.content,
             status: item.status,
             note: item.note || "",
+            daysOfWeek: normalizeDaysOfWeek(item.daysOfWeek),
           });
         });
 
@@ -350,7 +364,24 @@ export default function Dashboard() {
     };
   }, [authChecking, isVietnamese]);
 
-  const handleSoftDeleteGroup = useCallback((id: string | number, name?: string) => {
+  const handleRestoreGroup = useCallback((id: string | number) => {
+    setArchivedGroups((prev) => {
+      const target = prev.find((g) => g.id === id);
+      if (!target) return prev;
+
+      setTaskGroups((active) => [...active, target]);
+
+      setToast({
+        text: isVietnamese ? `Đã khôi phục "${target.name}"` : `Restored "${target.name}"`,
+      });
+
+      return prev.filter((g) => g.id !== id);
+    });
+
+    taskGroupApi.restore(id).catch(() => {});
+  }, [isVietnamese]);
+
+  const handleSoftDeleteGroup = useCallback((id: string | number) => {
     setTaskGroups((prev) => {
       const target = prev.find((g) => g.id === id);
       if (!target) return prev;
@@ -370,24 +401,7 @@ export default function Dashboard() {
     });
 
     taskGroupApi.delete(id).catch(() => {});
-  }, [isVietnamese, t.undo]);
-
-  const handleRestoreGroup = useCallback((id: string | number) => {
-    setArchivedGroups((prev) => {
-      const target = prev.find((g) => g.id === id);
-      if (!target) return prev;
-
-      setTaskGroups((active) => [...active, target]);
-
-      setToast({
-        text: isVietnamese ? `Đã khôi phục "${target.name}"` : `Restored "${target.name}"`,
-      });
-
-      return prev.filter((g) => g.id !== id);
-    });
-
-    taskGroupApi.restore(id).catch(() => {});
-  }, [isVietnamese]);
+  }, [isVietnamese, t.undo, handleRestoreGroup]);
 
   const handlePermanentDeleteGroup = useCallback((id: string | number) => {
     setArchivedGroups((prev) => prev.filter((g) => g.id !== id));
@@ -439,31 +453,112 @@ export default function Dashboard() {
     weeklyGoalApi.update(groupId, weekStartDate, text).catch(console.error);
   }, []);
 
-  const handleAddItem = useCallback(async (groupId: string | number, offset: number, content: string) => {
-    const key = `${groupId}:${offset}`;
-    const weekStartDate = getWeekDateStr(offset);
-    const tempId = `temp-${Date.now()}`;
-    const newItem: WorkItemData = {
-      id: tempId,
-      content,
-      status: "TODO",
-      note: "",
-    };
-    setWorkItemsMap((prev) => ({
-      ...prev,
-      [key]: [...(prev[key] ?? []), newItem],
-    }));
-
-    try {
-      const created = await workItemApi.create(groupId, weekStartDate, content, "");
+  const handleAddItem = useCallback(
+    async (
+      groupId: string | number,
+      offset: number,
+      content: string,
+      daysOfWeek: number[] = []
+    ) => {
+      const key = `${groupId}:${offset}`;
+      const weekStartDate = getWeekDateStr(offset);
+      const tempId = `temp-${Date.now()}`;
+      const normalizedDays = normalizeDaysOfWeek(daysOfWeek);
+      const newItem: WorkItemData = {
+        id: tempId,
+        content,
+        status: "TODO",
+        note: "",
+        daysOfWeek: normalizedDays,
+      };
       setWorkItemsMap((prev) => ({
         ...prev,
-        [key]: (prev[key] ?? []).map((item) => (item.id === tempId ? { ...item, id: created.id } : item)),
+        [key]: [...(prev[key] ?? []), newItem],
       }));
-    } catch (e) {
-      console.error("Lỗi thêm công việc vào Firebase:", e);
-    }
+
+      try {
+        const created = await workItemApi.create(groupId, weekStartDate, content, "", normalizedDays);
+        setWorkItemsMap((prev) => ({
+          ...prev,
+          [key]: (prev[key] ?? []).map((item) => (item.id === tempId ? { ...item, id: created.id } : item)),
+        }));
+      } catch (e) {
+        console.error("Lỗi thêm công việc vào Firebase:", e);
+      }
+    },
+    []
+  );
+
+  // Gán một việc vào nhiều thứ (hoặc bỏ hết về hàng đợi "Chưa xếp thứ").
+  const handleAssignDays = useCallback(
+    (groupId: string | number, offset: number, itemId: string | number, daysOfWeek: number[]) => {
+      const key = `${groupId}:${offset}`;
+      const normalizedDays = normalizeDaysOfWeek(daysOfWeek);
+      setWorkItemsMap((prev) => ({
+        ...prev,
+        [key]: (prev[key] ?? []).map((item) =>
+          item.id === itemId ? { ...item, daysOfWeek: normalizedDays } : item
+        ),
+      }));
+      workItemApi.update(itemId, { daysOfWeek: normalizedDays }).catch(console.error);
+    },
+    []
+  );
+
+  const applyDayAssignments = useCallback((assignments: DayAssignment[], offset: number) => {
+    setWorkItemsMap((prev) => {
+      const next = { ...prev };
+      for (const assignment of assignments) {
+        const key = `${assignment.taskGroupId}:${offset}`;
+        const items = next[key];
+        if (!items) continue;
+        next[key] = items.map((item) =>
+          item.id === assignment.taskId ? { ...item, daysOfWeek: assignment.daysOfWeek } : item
+        );
+      }
+      return next;
+    });
   }, []);
+
+  // "Tự xếp lịch": áp dụng kế hoạch của WeekAgenda, lưu một lượt, kèm Hoàn tác.
+  const handleAutoSchedule = useCallback(
+    (assignments: DayAssignment[]) => {
+      if (assignments.length === 0) {
+        setToast({
+          text: isVietnamese
+            ? "Không còn việc nào chưa xếp để tự xếp lịch."
+            : "There is no unscheduled task left to auto-plan.",
+        });
+        return;
+      }
+
+      const offset = viewOffset;
+      const previous: DayAssignment[] = assignments.map((assignment) => {
+        const items = workItemsMap[`${assignment.taskGroupId}:${offset}`] ?? [];
+        const item = items.find((candidate) => candidate.id === assignment.taskId);
+        return { ...assignment, daysOfWeek: normalizeDaysOfWeek(item?.daysOfWeek) };
+      });
+
+      applyDayAssignments(assignments, offset);
+      workItemApi
+        .assignDays(assignments.map((assignment) => ({ id: assignment.taskId, daysOfWeek: assignment.daysOfWeek })))
+        .catch(console.error);
+
+      setToast({
+        text: isVietnamese
+          ? `Đã tự xếp ${assignments.length} việc vào các thứ.`
+          : `Auto-planned ${assignments.length} tasks.`,
+        actionText: t.undo,
+        onAction: () => {
+          applyDayAssignments(previous, offset);
+          workItemApi
+            .assignDays(previous.map((assignment) => ({ id: assignment.taskId, daysOfWeek: assignment.daysOfWeek })))
+            .catch(console.error);
+        },
+      });
+    },
+    [applyDayAssignments, isVietnamese, t.undo, viewOffset, workItemsMap]
+  );
 
   const handleCycleStatus = useCallback((groupId: string | number, offset: number, itemId: string | number) => {
     const key = `${groupId}:${offset}`;
@@ -906,8 +1001,8 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Center: Week Navigator (only in planner) */}
-        {activeTab === "planner" ? (
+        {/* Center: Week Navigator (planner & weekly to-do share the same week) */}
+        {activeTab === "planner" || activeTab === "agenda" ? (
           <div
             className="nav-center-wrapper"
             style={{
@@ -1155,6 +1250,16 @@ export default function Dashboard() {
               }}
             />
             <SideNavItem
+              icon={<ListChecks size={15} />}
+              label={t.agenda}
+              active={activeTab === "agenda"}
+              badge={agendaPendingCount > 0 ? agendaPendingCount : null}
+              onClick={() => {
+                setActiveTab("agenda");
+                setMobileSidebarOpen(false);
+              }}
+            />
+            <SideNavItem
               icon={<Flag size={15} />}
               label={t.visions}
               active={activeTab === "visions"}
@@ -1337,7 +1442,7 @@ export default function Dashboard() {
                       <PencilSimple size={12} />
                     </button>
                     <button
-                      onClick={() => handleSoftDeleteGroup(g.id, g.name)}
+                      onClick={() => handleSoftDeleteGroup(g.id)}
                       title={t.archiveTooltip}
                       style={{
                         background: "none",
@@ -1574,6 +1679,21 @@ export default function Dashboard() {
               />
             </div>
           </>
+        ) : activeTab === "agenda" ? (
+          <main id="agenda-view" style={{ flex: 1, overflowY: "auto" }}>
+            <WeekAgenda
+              viewOffset={viewOffset}
+              taskGroups={taskGroups}
+              workItemsMap={workItemsMap}
+              onAddItem={handleAddItem}
+              onAssignDays={handleAssignDays}
+              onUpdateItem={handleUpdateItem}
+              onDeleteItem={handleDeleteItem}
+              onCycleStatus={handleCycleStatus}
+              onAutoSchedule={handleAutoSchedule}
+              onOpenPlanner={() => setActiveTab("planner")}
+            />
+          </main>
         ) : activeTab === "visions" ? (
           <main id="visions-view" style={{ flex: 1, overflowY: "auto" }}>
             <VisionsBoard
@@ -2310,6 +2430,19 @@ export default function Dashboard() {
 
         <button
           type="button"
+          className={`mobile-bottom-tab ${activeTab === "agenda" && !mobileSidebarOpen ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("agenda");
+            setMobileSidebarOpen(false);
+            setMobileSidePanelOpen(false);
+          }}
+        >
+          <ListChecks size={19} weight={activeTab === "agenda" && !mobileSidebarOpen ? "fill" : "regular"} />
+          <span>{t.agenda}</span>
+        </button>
+
+        <button
+          type="button"
           className={`mobile-bottom-tab ${activeTab === "visions" && !mobileSidebarOpen && !mobileSidePanelOpen ? "active" : ""}`}
           onClick={() => {
             setActiveTab("visions");
@@ -2333,27 +2466,6 @@ export default function Dashboard() {
           <Notebook size={19} weight={activeTab === "notes" && !mobileSidebarOpen && !mobileSidePanelOpen ? "fill" : "regular"} />
           <span>{t.notes}</span>
         </button>
-
-        {activeTab === "planner" && (
-          <button
-            type="button"
-            className={`mobile-bottom-tab ${mobileSidePanelOpen ? "active" : ""}`}
-            onClick={() => {
-              setMobileSidePanelOpen((v) => !v);
-              setMobileSidebarOpen(false);
-            }}
-          >
-            <div style={{ position: "relative", display: "inline-flex" }}>
-              <CheckSquare size={19} weight={mobileSidePanelOpen ? "fill" : "regular"} />
-              {sideTasks.filter((t) => !t.isDone).length > 0 && (
-                <span className="bottom-bar-badge">
-                  {sideTasks.filter((t) => !t.isDone).length}
-                </span>
-              )}
-            </div>
-            <span>{t.sideTasks}</span>
-          </button>
-        )}
 
         <button
           type="button"
@@ -2538,7 +2650,7 @@ export default function Dashboard() {
             text-align: center;
             line-height: 1.2;
           }
-          #main-grid, #notes-view, #visions-view {
+          #main-grid, #agenda-view, #notes-view, #visions-view {
             padding-bottom: 64px !important;
           }
           .desktop-only-btn {

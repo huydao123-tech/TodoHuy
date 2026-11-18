@@ -17,6 +17,8 @@ export interface WorkItemData {
   content: string;
   status: WorkItemStatus;
   note: string;
+  /** Các thứ trong tuần (1 = Thứ 2 … 7 = Chủ nhật). Rỗng = chưa xếp vào thứ nào. */
+  daysOfWeek?: number[];
 }
 
 export interface SideTaskData {

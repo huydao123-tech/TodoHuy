@@ -137,6 +137,31 @@ export interface Translations {
   sat: string;
   sun: string;
 
+  // Weekly to-do (agenda by weekday)
+  agenda: string;
+  agendaSub: string;
+  agendaUnscheduled: string;
+  agendaUnscheduledHint: string;
+  agendaUnscheduledEmpty: string;
+  agendaAddTask: string;
+  agendaAddHint: string;
+  agendaAddUnscheduledHint: string;
+  agendaPickGroup: string;
+  agendaNoDay: string;
+  agendaPickDays: string;
+  agendaAllWeek: string;
+  agendaEveryDay: string;
+  agendaClearDays: string;
+  agendaApply: string;
+  agendaDoneSuffix: string;
+  agendaHideDone: string;
+  agendaAutoSchedule: string;
+  agendaAutoScheduleHint: string;
+  agendaNoDayTasks: string;
+  agendaNoGroupsTitle: string;
+  agendaNoGroupsBody: string;
+  agendaOpenPlanner: string;
+
   // Side Panel
   sideTasksTitle: string;
   sideTaskInputHint: string;
@@ -329,6 +354,34 @@ export const translations: Record<AppLanguage, Translations> = {
     sat: "T7",
     sun: "CN",
 
+    // Weekly to-do (agenda by weekday)
+    agenda: "Việc cần làm",
+    agendaSub:
+      "Mỗi thứ một danh sách, gom từ các đầu việc trong Planner. Một việc có thể lặp ở nhiều thứ; việc chưa gán thứ nằm ở hàng đợi phía trên.",
+    agendaUnscheduled: "Chưa xếp thứ",
+    agendaUnscheduledHint: "Việc của tuần này chưa gán vào thứ nào. Chọn thứ ở từng dòng để xếp.",
+    agendaUnscheduledEmpty: "Mọi việc trong tuần đều đã có thứ.",
+    agendaAddTask: "Thêm việc",
+    agendaAddHint: "Việc cần làm...",
+    agendaAddUnscheduledHint: "Việc chưa xếp thứ...",
+    agendaPickGroup: "Đầu việc",
+    agendaNoDay: "Chưa xếp",
+    agendaPickDays: "Chọn thứ làm việc",
+    agendaAllWeek: "Cả tuần",
+    agendaEveryDay: "Chọn cả tuần",
+    agendaClearDays: "Bỏ hết thứ",
+    agendaApply: "Áp dụng",
+    agendaDoneSuffix: "xong",
+    agendaHideDone: "Ẩn việc đã xong",
+    agendaAutoSchedule: "Tự xếp lịch",
+    agendaAutoScheduleHint:
+      "Xếp lịch tự động: rải việc chưa xếp vào các thứ còn lại của tuần, ưu tiên việc đang làm và đầu việc ưu tiên cao, không giới hạn số việc mỗi ngày.",
+    agendaNoDayTasks: "Chưa có việc nào",
+    agendaNoGroupsTitle: "Chưa có đầu việc nào",
+    agendaNoGroupsBody:
+      "Tạo đầu việc trong Planner trước, rồi quay lại đây để xếp việc theo từng thứ.",
+    agendaOpenPlanner: "Mở Planner",
+
     // Side Panel
     sideTasksTitle: "Đầu việc phụ",
     sideTaskInputHint: "Thêm việc phụ mới... (Enter)",
@@ -520,6 +573,34 @@ export const translations: Record<AppLanguage, Translations> = {
     fri: "Fri",
     sat: "Sat",
     sun: "Sun",
+
+    // Weekly to-do (agenda by weekday)
+    agenda: "To-do",
+    agendaSub:
+      "One list per weekday, pulled from your Planner categories. A task can repeat on several days; unassigned ones wait in the queue above.",
+    agendaUnscheduled: "No day yet",
+    agendaUnscheduledHint: "This week's tasks are not on a weekday yet. Pick days on each row to slot them in.",
+    agendaUnscheduledEmpty: "Every task this week has a day.",
+    agendaAddTask: "Add task",
+    agendaAddHint: "Task to do...",
+    agendaAddUnscheduledHint: "Unscheduled task...",
+    agendaPickGroup: "Category",
+    agendaNoDay: "No day",
+    agendaPickDays: "Days to work on",
+    agendaAllWeek: "Every day",
+    agendaEveryDay: "All week",
+    agendaClearDays: "Clear days",
+    agendaApply: "Apply",
+    agendaDoneSuffix: "done",
+    agendaHideDone: "Hide completed",
+    agendaAutoSchedule: "Auto-plan",
+    agendaAutoScheduleHint:
+      "Auto-schedule: spread unscheduled tasks across the remaining days, in-progress and higher-priority categories first, no daily limit.",
+    agendaNoDayTasks: "No tasks",
+    agendaNoGroupsTitle: "No categories yet",
+    agendaNoGroupsBody:
+      "Create a category in the Planner first, then come back here to plan each weekday.",
+    agendaOpenPlanner: "Open Planner",
 
     // Side Panel
     sideTasksTitle: "Side Tasks",

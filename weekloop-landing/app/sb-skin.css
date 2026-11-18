@@ -120,6 +120,7 @@
 }
 
 #main-grid,
+#agenda-view,
 #visions-view,
 #notes-view {
   grid-column: 2;
