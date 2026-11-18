@@ -234,6 +234,23 @@ export default function WeekAgenda({
     return buildAgenda(items, taskGroups);
   }, [taskGroups, workItemsMap, viewOffset]);
 
+  // Mọi việc của tuần, gom theo đầu việc — để composer ngày hiện việc đã có trong Planner.
+  const tasksByGroup = useMemo(() => {
+    const lookup = new Map<string, AgendaTask[]>();
+    const seen = new Set<string>();
+    const push = (task: AgendaTask) => {
+      const id = String(task.id);
+      if (seen.has(id)) return;
+      seen.add(id);
+      const list = lookup.get(task.taskGroupId);
+      if (list) list.push(task);
+      else lookup.set(task.taskGroupId, [task]);
+    };
+    for (const day of AGENDA_DAYS) for (const task of agenda.days[day]) push(task);
+    for (const task of agenda.unscheduled) push(task);
+    return lookup;
+  }, [agenda]);
+
   const dayNames = [t.mon, t.tue, t.wed, t.thu, t.fri, t.sat, t.sun];
   const dayLabel = (day: AgendaDay) => dayNames[day - 1];
 
@@ -574,6 +591,12 @@ export default function WeekAgenda({
               const dayDone = tasks.filter((task) => task.status === "DONE").length;
               const isToday = isCurrentWeek && isDayToday(weekStart, day);
               const dateLabel = dayDateLabel(weekStart, day);
+              const composerTasks =
+                composerDay === day
+                  ? (tasksByGroup.get(String(composerGroupId)) ?? []).filter(
+                      (task) => task.status !== "DONE" && !task.daysOfWeek.includes(day),
+                    )
+                  : [];
 
               return (
                 <section
@@ -624,6 +647,44 @@ export default function WeekAgenda({
                               </option>
                             ))}
                           </select>
+
+                          {composerTasks.length > 0 ? (
+                            <div className="agenda-pick">
+                              <p className="agenda-pick-title">
+                                {t.agendaFromPlanner}
+                                <span>{composerTasks.length}</span>
+                              </p>
+                              <div className="agenda-pick-list">
+                                {composerTasks.map((task) => (
+                                  <button
+                                    key={task.id}
+                                    type="button"
+                                    className="agenda-pick-item"
+                                    title={t.agendaAddExisting}
+                                    onClick={() =>
+                                      onAssignDays(
+                                        task.taskGroupId,
+                                        viewOffset,
+                                        task.id,
+                                        normalizeDaysOfWeek([...task.daysOfWeek, day]),
+                                      )
+                                    }
+                                  >
+                                    <Plus size={11} />
+                                    <span className="agenda-pick-text">{task.content}</span>
+                                    {task.daysOfWeek.length > 0 && (
+                                      <span className="agenda-pick-days">
+                                        {task.daysOfWeek.map(dayLabel).join("·")}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="agenda-pick-empty">{t.agendaFromPlannerEmpty}</p>
+                          )}
+
                           <div className="agenda-composer-row">
                             <input
                               autoFocus
@@ -1219,6 +1280,71 @@ export default function WeekAgenda({
           outline: none;
         }
         .agenda-composer-row { display: flex; align-items: center; gap: 0.3rem; }
+        .agenda-pick { display: flex; flex-direction: column; gap: 0.2rem; }
+        .agenda-pick-title {
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          font-size: 0.625rem;
+          font-weight: 650;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+        }
+        .agenda-pick-title span {
+          font-weight: 500;
+          letter-spacing: 0;
+          text-transform: none;
+          color: var(--text-faint);
+        }
+        .agenda-pick-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          max-height: 152px;
+          overflow-y: auto;
+          padding: 0.15rem;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-sm);
+          background: var(--card-bg);
+        }
+        .agenda-pick-item {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          width: 100%;
+          padding: 0.22rem 0.3rem;
+          border: none;
+          border-radius: var(--radius-sm);
+          background: transparent;
+          color: var(--text-muted);
+          font-family: inherit;
+          font-size: 0.75rem;
+          text-align: left;
+          cursor: pointer;
+        }
+        .agenda-pick-item:hover { background: var(--accent-bg); color: var(--text); }
+        .agenda-pick-item > svg { flex-shrink: 0; color: var(--accent); }
+        .agenda-pick-text {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .agenda-pick-days {
+          flex-shrink: 0;
+          font-family: var(--font-geist-mono), monospace;
+          font-size: 0.625rem;
+          color: var(--text-faint);
+        }
+        .agenda-pick-empty {
+          margin: 0;
+          font-size: 0.6875rem;
+          font-style: italic;
+          color: var(--text-faint);
+        }
         .agenda-composer-row input {
           flex: 1;
           min-width: 0;
@@ -1288,6 +1414,7 @@ export default function WeekAgenda({
         .agenda-daypick-quick:focus-visible,
         .agenda-daypick-clear:focus-visible,
         .agenda-daypick-apply:focus-visible,
+        .agenda-pick-item:focus-visible,
         .agenda-composer-submit:focus-visible,
         .agenda-composer-cancel:focus-visible {
           outline: 2px solid var(--accent);

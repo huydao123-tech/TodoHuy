@@ -159,6 +159,9 @@ export interface Translations {
   agendaAutoScheduleHint: string;
   agendaReorder: string;
   agendaRemoveFromDay: string;
+  agendaFromPlanner: string;
+  agendaFromPlannerEmpty: string;
+  agendaAddExisting: string;
   agendaNoDayTasks: string;
   agendaNoGroupsTitle: string;
   agendaNoGroupsBody: string;
@@ -380,6 +383,9 @@ export const translations: Record<AppLanguage, Translations> = {
       "Xếp lịch tự động: rải việc chưa xếp vào các thứ còn lại của tuần, ưu tiên việc đang làm và đầu việc ưu tiên cao, không giới hạn số việc mỗi ngày.",
     agendaReorder: "Kéo để đổi thứ tự trong ngày",
     agendaRemoveFromDay: "Bỏ khỏi thứ này (việc vẫn còn trong Planner)",
+    agendaFromPlanner: "Việc đã có trong Planner",
+    agendaFromPlannerEmpty: "Không còn việc nào của đầu việc này để thêm vào thứ này.",
+    agendaAddExisting: "Thêm việc này vào thứ đang xem",
     agendaNoDayTasks: "Chưa có việc nào",
     agendaNoGroupsTitle: "Chưa có đầu việc nào",
     agendaNoGroupsBody:
@@ -602,6 +608,9 @@ export const translations: Record<AppLanguage, Translations> = {
       "Auto-schedule: spread unscheduled tasks across the remaining days, in-progress and higher-priority categories first, no daily limit.",
     agendaReorder: "Drag to reorder within the day",
     agendaRemoveFromDay: "Remove from this day (the task stays in the Planner)",
+    agendaFromPlanner: "Tasks already in the Planner",
+    agendaFromPlannerEmpty: "No tasks from this category are left to add to this day.",
+    agendaAddExisting: "Add this task to the day you are viewing",
     agendaNoDayTasks: "No tasks",
     agendaNoGroupsTitle: "No categories yet",
     agendaNoGroupsBody:
