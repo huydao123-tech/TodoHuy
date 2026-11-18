@@ -50,6 +50,19 @@ export function toggleAgendaDay(days: AgendaDay[], day: AgendaDay): AgendaDay[] 
   return normalizeDaysOfWeek(next);
 }
 
+/** Thứ tự kéo-thả theo từng thứ, key "1".."7"; bỏ key/giá trị không hợp lệ. */
+export function normalizeDayOrder(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: Record<string, number> = {};
+  for (const [key, order] of Object.entries(value as Record<string, unknown>)) {
+    const day = normalizeDayOfWeek(key);
+    if (day !== null && typeof order === "number" && Number.isFinite(order)) {
+      result[String(day)] = order;
+    }
+  }
+  return result;
+}
+
 export interface AgendaTask {
   id: string | number;
   taskGroupId: string;
@@ -57,18 +70,33 @@ export interface AgendaTask {
   status: WorkItemStatus;
   note: string;
   daysOfWeek: AgendaDay[];
+  dayOrder: Record<string, number>;
   groupName: string;
   groupColor: string;
 }
 
-/** Việc cần làm trước, việc đã xong xuống cuối; trong cùng trạng thái giữ thứ tự của Planner. */
-export function sortAgendaTasks(tasks: AgendaTask[]): AgendaTask[] {
+/**
+ * Sắp việc trong một ngày.
+ * `day` có truyền thì thứ tự kéo-thả (`dayOrder`) thắng trước; việc chưa có thứ tự
+ * xếp theo trạng thái rồi theo thứ tự Planner. Không truyền `day` (hàng đợi) thì
+ * xếp theo trạng thái.
+ */
+export function sortAgendaTasks(tasks: AgendaTask[], day?: AgendaDay): AgendaTask[] {
   return tasks
     .map((task, index) => ({ task, index }))
-    .sort(
-      (a, b) =>
-        STATUS_RANK[a.task.status] - STATUS_RANK[b.task.status] || a.index - b.index,
-    )
+    .sort((a, b) => {
+      if (day !== undefined) {
+        const orderA = a.task.dayOrder[String(day)];
+        const orderB = b.task.dayOrder[String(day)];
+        const hasA = typeof orderA === "number";
+        const hasB = typeof orderB === "number";
+        if (hasA && hasB && orderA !== orderB) return orderA - orderB;
+        if (hasA !== hasB) return hasA ? -1 : 1;
+      }
+      return (
+        STATUS_RANK[a.task.status] - STATUS_RANK[b.task.status] || a.index - b.index
+      );
+    })
     .map(({ task }) => task);
 }
 
@@ -116,6 +144,7 @@ export function buildAgenda(items: AgendaSourceWork[], groups: TaskGroup[]): Age
       status: item.status,
       note: item.note || "",
       daysOfWeek,
+      dayOrder: normalizeDayOrder(item.dayOrder),
       groupName: info?.name ?? "",
       groupColor: info?.color ?? "#A1A1AA",
     };
@@ -126,7 +155,7 @@ export function buildAgenda(items: AgendaSourceWork[], groups: TaskGroup[]): Age
     for (const day of daysOfWeek) days[day].push(task);
   }
 
-  for (const day of AGENDA_DAYS) days[day] = sortAgendaTasks(days[day]);
+  for (const day of AGENDA_DAYS) days[day] = sortAgendaTasks(days[day], day);
 
   const done = items.filter((item) => item.status === "DONE").length;
   const inProgress = items.filter((item) => item.status === "IN_PROGRESS").length;

@@ -157,6 +157,7 @@ export interface Translations {
   agendaHideDone: string;
   agendaAutoSchedule: string;
   agendaAutoScheduleHint: string;
+  agendaReorder: string;
   agendaNoDayTasks: string;
   agendaNoGroupsTitle: string;
   agendaNoGroupsBody: string;
@@ -376,6 +377,7 @@ export const translations: Record<AppLanguage, Translations> = {
     agendaAutoSchedule: "Tự xếp lịch",
     agendaAutoScheduleHint:
       "Xếp lịch tự động: rải việc chưa xếp vào các thứ còn lại của tuần, ưu tiên việc đang làm và đầu việc ưu tiên cao, không giới hạn số việc mỗi ngày.",
+    agendaReorder: "Kéo để đổi thứ tự trong ngày",
     agendaNoDayTasks: "Chưa có việc nào",
     agendaNoGroupsTitle: "Chưa có đầu việc nào",
     agendaNoGroupsBody:
@@ -596,6 +598,7 @@ export const translations: Record<AppLanguage, Translations> = {
     agendaAutoSchedule: "Auto-plan",
     agendaAutoScheduleHint:
       "Auto-schedule: spread unscheduled tasks across the remaining days, in-progress and higher-priority categories first, no daily limit.",
+    agendaReorder: "Drag to reorder within the day",
     agendaNoDayTasks: "No tasks",
     agendaNoGroupsTitle: "No categories yet",
     agendaNoGroupsBody:

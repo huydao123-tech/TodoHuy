@@ -1,41 +1,16 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { TaskGroup, WorkItemData, WorkItemStatus } from "@/lib/mockData";
 import {
   getGoalText,
   getWorkItems,
   getWeekRange,
 } from "@/lib/mockData";
-import { CheckCircle, Clock, Circle, Plus, Trash, X, PencilSimple, FileText, ArrowsClockwise } from "@phosphor-icons/react";
+import { Plus, Trash, X, PencilSimple, FileText, ArrowsClockwise } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import TaskDetailModal from "@/components/app/TaskDetailModal";
 import { useLanguage } from "@/lib/languageContext";
-
-// ─── CẤU HÌNH TRẠNG THÁI ──────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<
-  WorkItemStatus,
-  { icon: React.ReactNode; textColor: string; strikethrough: boolean; label: string }
-> = {
-  DONE: {
-    icon: <CheckCircle size={14} weight="fill" color="var(--accent)" />,
-    textColor: "var(--text-faint)",
-    strikethrough: true,
-    label: "Đã xong",
-  },
-  IN_PROGRESS: {
-    icon: <Clock size={14} weight="regular" color="#D97706" />,
-    textColor: "var(--text)",
-    strikethrough: false,
-    label: "Đang làm",
-  },
-  TODO: {
-    icon: <Circle size={14} weight="thin" color="#A1A1AA" />,
-    textColor: "var(--text-muted)",
-    strikethrough: false,
-    label: "Cần làm",
-  },
-};
 
 // ─── THẺ MỤC TIÊU VÀ CÔNG VIỆC (GOAL CARD) ───────────────────────────────────
 function GoalCard({
@@ -52,7 +27,6 @@ function GoalCard({
   onAddItem,
   onUpdateItem,
   onDeleteItem,
-  onCycleStatus,
   onOpenTaskDetail,
   onMoveTaskToCurrentWeek,
 }: {
@@ -69,40 +43,28 @@ function GoalCard({
   onAddItem?: (groupId: string | number, absoluteOffset: number, content: string) => void;
   onUpdateItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
-  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
   onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }) {
   const { t, isVietnamese } = useLanguage();
-  const fallbackWorkItems = getWorkItems(groupId, absoluteOffset);
+  const fallbackWorkItems = useMemo(
+    () => getWorkItems(groupId, absoluteOffset),
+    [groupId, absoluteOffset],
+  );
   const currentItems = workItems !== undefined ? workItems : fallbackWorkItems;
 
   const [localItems, setLocalItems] = useState<WorkItemData[]>(currentItems);
+  const [loadedItems, setLoadedItems] = useState<WorkItemData[]>(currentItems);
   const [editingItemId, setEditingItemId] = useState<string | number | null>(null);
   const [editItemVal, setEditItemVal] = useState("");
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemText, setNewItemText] = useState("");
 
-  useEffect(() => {
+  // Dữ liệu mới từ Planner về thì đồng bộ ngay trong render (không dùng effect).
+  if (loadedItems !== currentItems) {
+    setLoadedItems(currentItems);
     setLocalItems(currentItems);
-  }, [currentItems]);
-
-  const pendingCount = currentItems.filter((item) => item.status !== "DONE").length;
-
-  const cycleStatus = useCallback((id: string | number) => {
-    if (isPast) return;
-    const cycle: WorkItemStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
-    setLocalItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status: cycle[(cycle.indexOf(item.status) + 1) % 3] }
-          : item
-      )
-    );
-    if (onCycleStatus) {
-      onCycleStatus(groupId, absoluteOffset, id);
-    }
-  }, [isPast, groupId, absoluteOffset, onCycleStatus]);
+  }
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +128,7 @@ function GoalCard({
           >
             {name}
           </span>
-          {pendingCount > 0 && (
+          {currentItems.length > 0 && (
             <span
               style={{
                 fontSize: "0.625rem",
@@ -177,7 +139,7 @@ function GoalCard({
                 borderRadius: "var(--radius-pill)",
               }}
             >
-              {pendingCount}
+              {currentItems.length}
             </span>
           )}
         </div>
@@ -250,7 +212,6 @@ function GoalCard({
       {localItems.length > 0 && (
         <div style={{ padding: "0.375rem 0.75rem 0" }}>
           {localItems.map((item) => {
-            const cfg = STATUS_CONFIG[item.status];
             const isEditing = editingItemId === item.id;
             return (
               <div
@@ -263,31 +224,6 @@ function GoalCard({
                   width: "100%",
                 }}
               >
-                <button
-                  onClick={() => cycleStatus(item.id)}
-                  disabled={isPast || isEditing}
-                  title={
-                    isPast || isEditing
-                      ? undefined
-                      : item.status === "TODO"
-                      ? (isVietnamese ? "Chuyển sang: Đang làm" : "Set to: In Progress")
-                      : item.status === "IN_PROGRESS"
-                      ? (isVietnamese ? "Chuyển sang: Đã xong" : "Set to: Done")
-                      : (isVietnamese ? "Đặt lại: Cần làm" : "Reset to: To Do")
-                  }
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: isPast || isEditing ? "default" : "pointer",
-                    flexShrink: 0,
-                    marginTop: 1,
-                    padding: 0,
-                    display: "flex",
-                  }}
-                >
-                  {cfg.icon}
-                </button>
-
                 {isEditing ? (
                   <input
                     autoFocus
@@ -355,8 +291,7 @@ function GoalCard({
                       <span
                         style={{
                           fontSize: "0.8rem",
-                          color: cfg.textColor,
-                          textDecoration: cfg.strikethrough ? "line-through" : "none",
+                          color: "var(--text-muted)",
                           lineHeight: 1.45,
                           wordBreak: "break-word",
                         }}
@@ -447,7 +382,7 @@ function GoalCard({
                         </button>
                       </div>
                     ) : (
-                      item.status !== "DONE" && onMoveTaskToCurrentWeek && (
+                      onMoveTaskToCurrentWeek && (
                         <div
                           className="past-item-actions"
                           style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}
@@ -599,7 +534,6 @@ function WeekColumn({
   onAddItem,
   onUpdateItem,
   onDeleteItem,
-  onCycleStatus,
   onOpenTaskDetail,
   onMoveTaskToCurrentWeek,
 }: {
@@ -617,7 +551,6 @@ function WeekColumn({
   onAddItem?: (groupId: string | number, absoluteOffset: number, content: string) => void;
   onUpdateItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number, updates: { content?: string; note?: string; status?: WorkItemStatus } | string) => void;
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
-  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onOpenTaskDetail?: (item: WorkItemData, groupId: string | number, name: string, color: string, absoluteOffset: number, weekLabel: string) => void;
   onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }) {
@@ -735,7 +668,6 @@ function WeekColumn({
                   onAddItem={onAddItem}
                   onUpdateItem={onUpdateItem}
                   onDeleteItem={onDeleteItem}
-                  onCycleStatus={onCycleStatus}
                   onOpenTaskDetail={onOpenTaskDetail}
                   onMoveTaskToCurrentWeek={onMoveTaskToCurrentWeek}
                 />
@@ -944,7 +876,6 @@ export interface WeekGridProps {
     updates: { content?: string; note?: string; status?: WorkItemStatus } | string
   ) => void;
   onDeleteItem?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
-  onCycleStatus?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onMoveTaskToCurrentWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
   onMoveTaskToNextWeek?: (groupId: string | number, absoluteOffset: number, itemId: string | number) => void;
 }
@@ -962,7 +893,6 @@ export default function WeekGrid({
   onAddItem,
   onUpdateItem,
   onDeleteItem,
-  onCycleStatus,
   onMoveTaskToCurrentWeek,
   onMoveTaskToNextWeek,
 }: WeekGridProps) {
@@ -1089,7 +1019,6 @@ export default function WeekGrid({
               onAddItem={onAddItem}
               onUpdateItem={onUpdateItem}
               onDeleteItem={onDeleteItem}
-              onCycleStatus={onCycleStatus}
               onOpenTaskDetail={handleOpenTaskDetail}
               onMoveTaskToCurrentWeek={onMoveTaskToCurrentWeek}
             />
@@ -1106,6 +1035,7 @@ export default function WeekGrid({
         groupColor={detailTask ? detailTask.groupColor : "var(--accent)"}
         weekLabel={detailTask ? detailTask.weekLabel : ""}
         isPast={detailTask ? detailTask.absoluteOffset < 0 : false}
+        showStatus={false}
         onSave={handleSaveTaskDetail}
         onDelete={handleDeleteTaskDetail}
         onMoveToCurrentWeek={

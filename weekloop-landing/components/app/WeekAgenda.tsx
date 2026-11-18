@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import {
   ArrowsClockwise,
   CalendarBlank,
   CheckCircle,
   Circle,
   Clock,
+  DotsSixVertical,
   FileText,
   Plus,
   Sparkle,
@@ -39,6 +40,13 @@ const STATUS_ICON: Record<WorkItemStatus, ReactNode> = {
   IN_PROGRESS: <Clock size={15} weight="regular" color="#D97706" />,
   TODO: <Circle size={15} weight="thin" color="#A1A1AA" />,
 };
+
+interface DragState {
+  day: AgendaDay;
+  taskId: string | number;
+  originalIds: (string | number)[];
+  ids: (string | number)[];
+}
 
 // ─── CHỌN NHIỀU THỨ CHO MỘT VIỆC (việc lặp lại nhiều ngày) ───────────────────
 function DayPicker({
@@ -178,6 +186,7 @@ export interface WeekAgendaProps {
   onDeleteItem: (groupId: string | number, offset: number, itemId: string | number) => void;
   onCycleStatus: (groupId: string | number, offset: number, itemId: string | number) => void;
   onAutoSchedule: (assignments: DayAssignment[]) => void;
+  onReorderDay: (day: AgendaDay, orderedIds: (string | number)[]) => void;
   onOpenPlanner: () => void;
 }
 
@@ -191,6 +200,7 @@ export default function WeekAgenda({
   onDeleteItem,
   onCycleStatus,
   onAutoSchedule,
+  onReorderDay,
   onOpenPlanner,
 }: WeekAgendaProps) {
   const { t, isVietnamese } = useLanguage();
@@ -203,6 +213,8 @@ export default function WeekAgenda({
   const [composerGroupId, setComposerGroupId] = useState("");
   const [composerText, setComposerText] = useState("");
   const [detailTask, setDetailTask] = useState<AgendaTask | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
 
   const agenda = useMemo(() => {
     const items: AgendaSourceWork[] = [];
@@ -258,11 +270,92 @@ export default function WeekAgenda({
 
   const progress = agenda.stats.total > 0 ? Math.round((agenda.stats.done / agenda.stats.total) * 100) : 0;
 
-  const renderRow = (task: AgendaTask, scheduled: boolean) => {
+  // ─── Kéo-thả đổi thứ tự trong một thứ (chuột lẫn cảm ứng) ──────────────────
+  const startDrag = (
+    event: ReactPointerEvent,
+    day: AgendaDay,
+    taskId: string | number,
+    ids: (string | number)[],
+  ) => {
+    if (isPast || hideDone) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const initial: DragState = { day, taskId, originalIds: [...ids], ids: [...ids] };
+    dragRef.current = initial;
+    setDragState(initial);
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      const element = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
+      const dayElement = element?.closest("[data-agenda-day]") as HTMLElement | null;
+      const rowElement = element?.closest("[data-agenda-row]") as HTMLElement | null;
+      if (!dayElement || Number(dayElement.dataset.agendaDay) !== day) return;
+
+      const targetId = rowElement?.dataset.agendaRow;
+      const current = dragRef.current;
+      if (!current || !targetId || String(targetId) === String(current.taskId)) return;
+      if (!current.ids.some((id) => String(id) === targetId)) return;
+
+      const withoutDragged = current.ids.filter((id) => String(id) !== String(current.taskId));
+      const targetIndex = withoutDragged.findIndex((id) => String(id) === targetId);
+      if (targetIndex === -1) return;
+
+      const nextIds = [...withoutDragged];
+      nextIds.splice(targetIndex, 0, current.taskId);
+      if (nextIds.every((id, index) => String(id) === String(current.ids[index]))) return;
+
+      const next = { ...current, ids: nextIds };
+      dragRef.current = next;
+      setDragState(next);
+    };
+
+    const finish = () => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", finish);
+
+      const finalState = dragRef.current;
+      dragRef.current = null;
+      setDragState(null);
+      if (!finalState) return;
+
+      const changed = finalState.ids.some(
+        (id, index) => String(id) !== String(finalState.originalIds[index]),
+      );
+      if (changed) onReorderDay(finalState.day, finalState.ids);
+    };
+
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", finish);
+  };
+
+  const renderRow = (
+    task: AgendaTask,
+    scheduled: boolean,
+    day?: AgendaDay,
+    ids?: (string | number)[],
+  ) => {
     const isDone = task.status === "DONE";
     const days = task.daysOfWeek;
+    const canDrag = Boolean(scheduled && day !== undefined && !isPast && !hideDone && ids && ids.length > 1);
     return (
-      <div key={task.id} className={`agenda-row${isDone ? " is-done" : ""}`}>
+      <div
+        key={task.id}
+        data-agenda-row={String(task.id)}
+        className={`agenda-row${isDone ? " is-done" : ""}${dragState?.taskId === task.id ? " is-dragging" : ""}`}
+      >
+        {canDrag && day !== undefined && ids && (
+          <button
+            type="button"
+            className="agenda-grip"
+            onPointerDown={(event) => startDrag(event, day, task.id, ids)}
+            title={t.agendaReorder}
+            aria-label={t.agendaReorder}
+          >
+            <DotsSixVertical size={14} />
+          </button>
+        )}
         <button
           type="button"
           className="agenda-status"
@@ -461,7 +554,14 @@ export default function WeekAgenda({
           <div className="agenda-grid">
             {AGENDA_DAYS.map((day) => {
               const tasks = agenda.days[day];
-              const shown = visibleTasks(tasks);
+              const baseShown = visibleTasks(tasks);
+              const draggingThisDay = dragState?.day === day;
+              const shown = draggingThisDay
+                ? dragState.ids
+                    .map((id) => baseShown.find((task) => String(task.id) === String(id)))
+                    .filter((task): task is AgendaTask => Boolean(task))
+                : baseShown;
+              const shownIds = shown.map((task) => task.id);
               const dayDone = tasks.filter((task) => task.status === "DONE").length;
               const isToday = isCurrentWeek && isDayToday(weekStart, day);
               const dateLabel = dayDateLabel(weekStart, day);
@@ -494,7 +594,9 @@ export default function WeekAgenda({
                           : "Everything for this day is done."}
                     </p>
                   ) : (
-                    <div className="agenda-day-list">{shown.map((task) => renderRow(task, true))}</div>
+                    <div className="agenda-day-list" data-agenda-day={day}>
+                      {shown.map((task) => renderRow(task, true, day, shownIds))}
+                    </div>
                   )}
 
                   {!isPast && (
@@ -858,6 +960,30 @@ export default function WeekAgenda({
           cursor: pointer;
         }
         .agenda-status:disabled { cursor: default; }
+        .agenda-grip {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          flex-shrink: 0;
+          padding: 0;
+          margin-top: 1px;
+          border: none;
+          background: none;
+          color: var(--text-faint);
+          opacity: 0.3;
+          cursor: grab;
+          touch-action: none;
+          transition: opacity 0.12s ease, color 0.12s ease;
+        }
+        .agenda-row:hover .agenda-grip,
+        .agenda-row:focus-within .agenda-grip { opacity: 0.75; }
+        .agenda-grip:hover { color: var(--text-muted); }
+        .agenda-row.is-dragging {
+          background: var(--accent-bg);
+          box-shadow: inset 0 0 0 1px var(--accent);
+        }
+        .agenda-row.is-dragging .agenda-grip { opacity: 1; cursor: grabbing; }
         .agenda-task {
           flex: 1;
           min-width: 0;
@@ -1143,6 +1269,7 @@ export default function WeekAgenda({
         .agenda-empty p { margin: 0 0 0.35rem; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); }
         .agenda-task:focus-visible,
         .agenda-status:focus-visible,
+        .agenda-grip:focus-visible,
         .agenda-add:focus-visible,
         .agenda-delete:focus-visible,
         .agenda-toggle:focus-visible,
@@ -1172,6 +1299,7 @@ export default function WeekAgenda({
         }
         @media (hover: none) {
           .agenda-row-actions { opacity: 1; }
+          .agenda-grip { opacity: 0.6; }
         }
         @media (prefers-reduced-motion: reduce) {
           .agenda-progress-track > span { transition: none; }

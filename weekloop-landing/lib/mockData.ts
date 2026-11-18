@@ -19,6 +19,8 @@ export interface WorkItemData {
   note: string;
   /** Các thứ trong tuần (1 = Thứ 2 … 7 = Chủ nhật). Rỗng = chưa xếp vào thứ nào. */
   daysOfWeek?: number[];
+  /** Thứ tự kéo-thả riêng cho từng thứ: key "1".."7" → vị trí trong ngày. */
+  dayOrder?: Record<string, number>;
 }
 
 export interface SideTaskData {

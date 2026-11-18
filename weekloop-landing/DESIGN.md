@@ -18,9 +18,9 @@ Skill evon:ui-ux đọc file này trước khi dựng. Sửa tay được; file 
 - Copy: vi/en trong `lib/translations.ts`, mặc định tiếng Việt
 
 ## Người dùng dặn
-- (chưa có)
+- Planner **không có trạng thái**; trạng thái (cần làm/đang làm/xong) chỉ thuộc module Việc cần làm.
 
 ## Màn đã dựng
-- `/dashboard` Planner: 3 cột tuần trượt, mỗi đầu việc một thẻ
-- `/dashboard` Việc cần làm: hàng đợi "Chưa xếp thứ" + 7 thẻ thứ 2→CN; mỗi việc chọn được nhiều thứ trong tuần (việc lặp lại), thêm việc theo đầu việc Planner; "Tự xếp lịch" rải việc chưa xếp vào các thứ còn lại (không giới hạn số việc/ngày, việc đang làm trước, có Hoàn tác); tuần cũ chỉ xem
+- `/dashboard` Planner: 3 cột tuần trượt, mỗi đầu việc một thẻ; chỉ có mục tiêu, việc, ghi chú — không có trạng thái
+- `/dashboard` Việc cần làm: hàng đợi "Chưa xếp thứ" + 7 thẻ thứ 2→CN; mỗi việc chọn được nhiều thứ trong tuần (việc lặp lại), thêm việc theo đầu việc Planner; kéo-thả đổi thứ tự trong từng thứ (lưu riêng theo ngày); "Tự xếp lịch" rải việc chưa xếp vào các thứ còn lại (không giới hạn số việc/ngày, việc đang làm trước, có Hoàn tác); tuần cũ chỉ xem
 - `/dashboard` Tầm nhìn, Ghi chú; `/garden` Văn phòng; `/` landing

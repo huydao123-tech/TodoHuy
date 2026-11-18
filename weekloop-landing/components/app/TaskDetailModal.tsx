@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import type { WorkItemData, WorkItemStatus } from "@/lib/mockData";
 import {
   X,
@@ -24,6 +24,8 @@ export interface TaskDetailModalProps {
   groupColor: string;
   weekLabel: string;
   isPast?: boolean;
+  /** Planner không dùng trạng thái nữa; agenda vẫn hiện. */
+  showStatus?: boolean;
   onSave: (
     taskId: string | number,
     updates: { content: string; note: string; status: WorkItemStatus }
@@ -41,6 +43,7 @@ export default function TaskDetailModal({
   groupColor,
   weekLabel,
   isPast = false,
+  showStatus = true,
   onSave,
   onDelete,
   onMoveToCurrentWeek,
@@ -54,14 +57,40 @@ export default function TaskDetailModal({
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (task) {
-      setContent(task.content || "");
-      setNote(task.note || "");
-      setStatus(task.status || "TODO");
-      setIsDeleting(false);
+  // Đổi task thì nạp lại nội dung ngay trong render (không dùng effect gây cascading render).
+  const [loadedTaskId, setLoadedTaskId] = useState<string | number | null>(null);
+  if (!task) {
+    if (loadedTaskId !== null) setLoadedTaskId(null);
+  } else if (String(loadedTaskId) !== String(task.id)) {
+    setLoadedTaskId(task.id);
+    setContent(task.content || "");
+    setNote(task.note || "");
+    setStatus(task.status || "TODO");
+    setIsDeleting(false);
+  }
+
+  const handleSave = useCallback(() => {
+    if (!task) return;
+    const trimmedContent = content.trim();
+    if (!trimmedContent) return;
+
+    onSave(task.id, {
+      content: trimmedContent,
+      note: note.trim(),
+      status,
+    });
+    onClose();
+  }, [content, note, onClose, onSave, status, task]);
+
+  const handleDelete = useCallback(() => {
+    if (!task) return;
+    if (isDeleting) {
+      onDelete(task.id);
+      onClose();
+    } else {
+      setIsDeleting(true);
     }
-  }, [task]);
+  }, [isDeleting, onClose, onDelete, task]);
 
   // Handle ESC and Ctrl/Cmd+Enter
   useEffect(() => {
@@ -77,30 +106,9 @@ export default function TaskDetailModal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, content, note, status]);
+  }, [isOpen, handleSave, onClose]);
 
   if (!isOpen || !task) return null;
-
-  const handleSave = () => {
-    const trimmedContent = content.trim();
-    if (!trimmedContent) return;
-
-    onSave(task.id, {
-      content: trimmedContent,
-      note: note.trim(),
-      status,
-    });
-    onClose();
-  };
-
-  const handleDelete = () => {
-    if (isDeleting) {
-      onDelete(task.id);
-      onClose();
-    } else {
-      setIsDeleting(true);
-    }
-  };
 
   const STATUS_OPTIONS: {
     key: WorkItemStatus;
@@ -193,35 +201,37 @@ export default function TaskDetailModal({
 
         {/* Body */}
         <div className="task-modal-body">
-          {/* Status Selection */}
-          <div className="task-field-group">
-            <label className="task-field-label">{t.taskStatusLabel}</label>
-            <div className="task-status-selector">
-              {STATUS_OPTIONS.map((opt) => {
-                const isActive = status === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    disabled={isPast}
-                    className={`task-status-btn ${isActive ? "active" : ""}`}
-                    style={{
-                      borderColor: isActive ? opt.color : "var(--border)",
-                      backgroundColor: isActive ? opt.bg : "var(--card-bg, #fff)",
-                      color: isActive ? opt.color : "var(--text-muted)",
-                      fontWeight: isActive ? 600 : 500,
-                      cursor: isPast ? "not-allowed" : "pointer",
-                      opacity: isPast && !isActive ? 0.5 : 1,
-                    }}
-                    onClick={() => !isPast && setStatus(opt.key)}
-                  >
-                    {opt.icon}
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
+          {/* Status Selection — Planner đã bỏ trạng thái, chỉ agenda hiện. */}
+          {showStatus && (
+            <div className="task-field-group">
+              <label className="task-field-label">{t.taskStatusLabel}</label>
+              <div className="task-status-selector">
+                {STATUS_OPTIONS.map((opt) => {
+                  const isActive = status === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      disabled={isPast}
+                      className={`task-status-btn ${isActive ? "active" : ""}`}
+                      style={{
+                        borderColor: isActive ? opt.color : "var(--border)",
+                        backgroundColor: isActive ? opt.bg : "var(--card-bg, #fff)",
+                        color: isActive ? opt.color : "var(--text-muted)",
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: isPast ? "not-allowed" : "pointer",
+                        opacity: isPast && !isActive ? 0.5 : 1,
+                      }}
+                      onClick={() => !isPast && setStatus(opt.key)}
+                    >
+                      {opt.icon}
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Title Input */}
           <div className="task-field-group">
@@ -281,7 +291,7 @@ export default function TaskDetailModal({
                 {t.readOnlyNotice}
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                {onMoveToCurrentWeek && task.status !== "DONE" && (
+                {onMoveToCurrentWeek && (!showStatus || task.status !== "DONE") && (
                   <button
                     type="button"
                     className="task-save-btn"
@@ -303,7 +313,7 @@ export default function TaskDetailModal({
                     <span>{t.moveToCurrentWeek || (isVietnamese ? "Dời sang tuần này" : "Move to this week")}</span>
                   </button>
                 )}
-                {onMoveToNextWeek && task.status !== "DONE" && (
+                {onMoveToNextWeek && (!showStatus || task.status !== "DONE") && (
                   <button
                     type="button"
                     className="task-cancel-btn"
@@ -346,7 +356,7 @@ export default function TaskDetailModal({
                   <Trash size={15} />
                   <span>{isDeleting ? (isVietnamese ? "Xác nhận xóa?" : "Confirm delete?") : t.delete}</span>
                 </button>
-                {onMoveToNextWeek && task && task.status !== "DONE" && (
+                {onMoveToNextWeek && task && (!showStatus || task.status !== "DONE") && (
                   <button
                     type="button"
                     className="task-cancel-btn"

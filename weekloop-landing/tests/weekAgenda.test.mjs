@@ -7,6 +7,7 @@ import {
   dayDateLabel,
   isDayToday,
   normalizeDayOfWeek,
+  normalizeDayOrder,
   normalizeDaysOfWeek,
   planAutoSchedule,
   toggleAgendaDay,
@@ -55,6 +56,44 @@ test("toggling a day on and off keeps the list sorted", () => {
   assert.deepEqual(toggleAgendaDay([5], 2), [2, 5]);
   assert.deepEqual(toggleAgendaDay([2, 5], 5), [2]);
   assert.deepEqual(toggleAgendaDay([3], 3), []);
+});
+
+test("day order keeps only valid weekday keys with finite numbers", () => {
+  assert.deepEqual(normalizeDayOrder(undefined), {});
+  assert.deepEqual(normalizeDayOrder(null), {});
+  assert.deepEqual(normalizeDayOrder([1, 2]), {});
+  assert.deepEqual(normalizeDayOrder({ 2: 1, "4": 0, 9: 5, x: 3, "5": "a" }), { "2": 1, "4": 0 });
+});
+
+test("manual day order wins over status sorting inside a day", () => {
+  const agenda = buildAgenda(
+    [
+      { ...work("done", "ja", [2], "DONE"), dayOrder: { "2": 0 } },
+      { ...work("todo", "ja", [2], "TODO"), dayOrder: { "2": 1 } },
+    ],
+    groups,
+  );
+  assert.deepEqual(agenda.days[2].map((task) => task.id), ["done", "todo"]);
+});
+
+test("tasks without manual order still sort by status then planner order", () => {
+  const agenda = buildAgenda(
+    [work("a", "ja", [2], "DONE"), work("b", "ja", [2], "TODO")],
+    groups,
+  );
+  assert.deepEqual(agenda.days[2].map((task) => task.id), ["b", "a"]);
+});
+
+test("manual order is kept per weekday, so the same task can sit differently", () => {
+  const agenda = buildAgenda(
+    [
+      { ...work("a", "ja", [2, 3]), dayOrder: { "2": 1, "3": 0 } },
+      { ...work("b", "ja", [2, 3]), dayOrder: { "2": 0, "3": 1 } },
+    ],
+    groups,
+  );
+  assert.deepEqual(agenda.days[2].map((task) => task.id), ["b", "a"]);
+  assert.deepEqual(agenda.days[3].map((task) => task.id), ["a", "b"]);
 });
 
 test("a task can appear on several days but counts once in progress", () => {

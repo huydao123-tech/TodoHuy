@@ -28,7 +28,7 @@ import {
 import { auth, db, googleProvider } from "./firebase";
 import { getMonday, formatWeekDateStr } from "./mockData";
 import { compareTaskGroups } from "./taskGroupPriority";
-import { normalizeDaysOfWeek } from "./weekAgenda";
+import { normalizeDayOrder, normalizeDaysOfWeek } from "./weekAgenda";
 import {
   attachGroupToVision,
   detachGroupFromVision,
@@ -243,6 +243,8 @@ export interface DashboardData {
     note: string;
     /** Các thứ trong tuần (1 = Thứ 2 … 7 = Chủ nhật); rỗng = chưa xếp. */
     daysOfWeek: number[];
+    /** Thứ tự kéo-thả riêng từng thứ, key "1".."7". */
+    dayOrder: Record<string, number>;
   }[];
   sideTasks: {
     id: string;
@@ -317,6 +319,7 @@ export const dashboardApi = {
         note: (data.note as string) || "",
         // Tương thích ngược: tài liệu cũ chỉ có một `dayOfWeek`.
         daysOfWeek: normalizeDaysOfWeek(data.daysOfWeek ?? data.dayOfWeek),
+        dayOrder: normalizeDayOrder(data.dayOrder),
       };
     });
 
@@ -792,6 +795,7 @@ export interface WorkItemApiData {
   status: "TODO" | "IN_PROGRESS" | "DONE";
   note: string;
   daysOfWeek: number[];
+  dayOrder: Record<string, number>;
 }
 
 export const workItemApi = {
@@ -813,6 +817,7 @@ export const workItemApi = {
       note: note || "",
       daysOfWeek: normalizedDays,
       dayOfWeek: null,
+      dayOrder: {},
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -824,6 +829,7 @@ export const workItemApi = {
       status: "TODO",
       note: note || "",
       daysOfWeek: normalizedDays,
+      dayOrder: {},
     };
   },
 
@@ -834,6 +840,7 @@ export const workItemApi = {
       status?: "TODO" | "IN_PROGRESS" | "DONE";
       note?: string;
       daysOfWeek?: number[];
+      dayOrder?: Record<string, number>;
     }
   ) => {
     const user = await requireAuthUser();
@@ -843,6 +850,7 @@ export const workItemApi = {
       payload.daysOfWeek = normalizeDaysOfWeek(data.daysOfWeek);
       payload.dayOfWeek = null;
     }
+    if ("dayOrder" in data) payload.dayOrder = normalizeDayOrder(data.dayOrder);
     await updateDoc(docRef, payload);
   },
 
@@ -859,6 +867,23 @@ export const workItemApi = {
       weekStartDate: targetWeekStartDate,
       updatedAt: serverTimestamp(),
     });
+  },
+
+  /** Ghi thứ tự kéo-thả cho nhiều việc trong một lượt. */
+  setDayOrder: async (updates: { id: string | number; dayOrder: Record<string, number> }[]) => {
+    if (updates.length === 0) return;
+    const user = await requireAuthUser();
+    const chunkSize = 450;
+    for (let start = 0; start < updates.length; start += chunkSize) {
+      const batch = writeBatch(db);
+      for (const update of updates.slice(start, start + chunkSize)) {
+        batch.update(doc(db, "users", user.uid, "work_items", String(update.id)), {
+          dayOrder: normalizeDayOrder(update.dayOrder),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    }
   },
 
   /** Ghi danh sách thứ cho nhiều việc trong một lượt — dùng cho "Tự xếp lịch" và hoàn tác. */

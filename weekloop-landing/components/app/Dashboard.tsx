@@ -48,7 +48,7 @@ import WeekAgenda from "@/components/app/WeekAgenda";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
 import VisionsBoard, { VisionLens } from "@/components/app/VisionsBoard";
-import { normalizeDaysOfWeek, type DayAssignment } from "@/lib/weekAgenda";
+import { normalizeDayOrder, normalizeDaysOfWeek, type DayAssignment } from "@/lib/weekAgenda";
 import {
   CaretLeft,
   CaretRight,
@@ -278,6 +278,7 @@ export default function Dashboard() {
             status: item.status,
             note: item.note || "",
             daysOfWeek: normalizeDaysOfWeek(item.daysOfWeek),
+            dayOrder: normalizeDayOrder(item.dayOrder),
           });
         });
 
@@ -519,6 +520,40 @@ export default function Dashboard() {
       return next;
     });
   }, []);
+
+  // Kéo-thả trong một thứ: mỗi thứ giữ vị trí riêng trong `dayOrder`.
+  const handleReorderDay = useCallback(
+    (day: number, orderedIds: (string | number)[], offset: number) => {
+      const positions = new Map(orderedIds.map((id, index) => [String(id), index]));
+      const updates: { id: string | number; dayOrder: Record<string, number> }[] = [];
+      for (const [key, items] of Object.entries(workItemsMap)) {
+        if (!key.endsWith(`:${offset}`)) continue;
+        for (const item of items) {
+          const position = positions.get(String(item.id));
+          if (position === undefined) continue;
+          const current = normalizeDayOrder(item.dayOrder);
+          if (current[String(day)] === position) continue;
+          updates.push({ id: item.id, dayOrder: { ...current, [String(day)]: position } });
+        }
+      }
+      if (updates.length === 0) return;
+
+      setWorkItemsMap((prev) => {
+        const orderById = new Map(updates.map((update) => [String(update.id), update.dayOrder]));
+        const next = { ...prev };
+        for (const key of Object.keys(next)) {
+          if (!key.endsWith(`:${offset}`)) continue;
+          next[key] = next[key].map((item) => {
+            const dayOrder = orderById.get(String(item.id));
+            return dayOrder ? { ...item, dayOrder } : item;
+          });
+        }
+        return next;
+      });
+      workItemApi.setDayOrder(updates).catch(console.error);
+    },
+    [workItemsMap]
+  );
 
   // "Tự xếp lịch": áp dụng kế hoạch của WeekAgenda, lưu một lượt, kèm Hoàn tác.
   const handleAutoSchedule = useCallback(
@@ -1642,7 +1677,6 @@ export default function Dashboard() {
                   onAddItem={handleAddItem}
                   onUpdateItem={handleUpdateItem}
                   onDeleteItem={handleDeleteItem}
-                  onCycleStatus={handleCycleStatus}
                   onMoveTaskToCurrentWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 0)}
                   onMoveTaskToNextWeek={(gId: string | number, fromOffset: number, itemId: string | number) => handleMoveTaskToWeek(gId, fromOffset, itemId, 1)}
                 />
@@ -1691,6 +1725,7 @@ export default function Dashboard() {
               onDeleteItem={handleDeleteItem}
               onCycleStatus={handleCycleStatus}
               onAutoSchedule={handleAutoSchedule}
+              onReorderDay={(day, orderedIds) => handleReorderDay(day, orderedIds, viewOffset)}
               onOpenPlanner={() => setActiveTab("planner")}
             />
           </main>
