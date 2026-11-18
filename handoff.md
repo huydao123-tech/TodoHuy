@@ -15,7 +15,7 @@ Năm commit đã push lên `main`:
 | `79689d5` | Add session handoff notes for the weekly to-do module |
 | `e143dfc` | List existing planner tasks in the day task composer |
 
-`git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → các commit trên → `origin/main` khớp local.
+`git log` từ đầu phiên: `64df183` (Merge PR #6 — remove second-brain) → các commit trên → `origin/main` khớp local. Các commit chỉ sửa riêng tài liệu này không nhất thiết liệt kê trong bảng.
 
 Chưa commit (có từ trước phiên, không thuộc tính năng):
 - `skills-lock.json` (sửa) — do cài skill `ui-ux`.
