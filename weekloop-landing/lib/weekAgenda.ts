@@ -50,6 +50,14 @@ export function toggleAgendaDay(days: AgendaDay[], day: AgendaDay): AgendaDay[] 
   return normalizeDaysOfWeek(next);
 }
 
+/**
+ * Bỏ một thứ khỏi việc mà không xoá việc: việc vẫn nằm trong Planner,
+ * các thứ khác giữ nguyên; bỏ hết thứ thì việc về hàng đợi "Chưa xếp thứ".
+ */
+export function removeAgendaDay(days: AgendaDay[], day: AgendaDay): AgendaDay[] {
+  return normalizeDaysOfWeek(days.filter((item) => item !== day));
+}
+
 /** Thứ tự kéo-thả theo từng thứ, key "1".."7"; bỏ key/giá trị không hợp lệ. */
 export function normalizeDayOrder(value: unknown): Record<string, number> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};

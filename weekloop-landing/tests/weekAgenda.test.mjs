@@ -10,6 +10,7 @@ import {
   normalizeDayOrder,
   normalizeDaysOfWeek,
   planAutoSchedule,
+  removeAgendaDay,
   toggleAgendaDay,
   weekdayIndex,
   withDaysOfWeek,
@@ -56,6 +57,13 @@ test("toggling a day on and off keeps the list sorted", () => {
   assert.deepEqual(toggleAgendaDay([5], 2), [2, 5]);
   assert.deepEqual(toggleAgendaDay([2, 5], 5), [2]);
   assert.deepEqual(toggleAgendaDay([3], 3), []);
+});
+
+test("removing a day keeps the task and its other days", () => {
+  assert.deepEqual(removeAgendaDay([2, 4, 6], 4), [2, 6]);
+  assert.deepEqual(removeAgendaDay([3], 3), []);
+  assert.deepEqual(removeAgendaDay([2, 4], 5), [2, 4]);
+  assert.deepEqual(removeAgendaDay([], 1), []);
 });
 
 test("day order keeps only valid weekday keys with finite numbers", () => {

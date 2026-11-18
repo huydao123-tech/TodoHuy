@@ -48,7 +48,13 @@ import WeekAgenda from "@/components/app/WeekAgenda";
 import SidePanel from "@/components/app/SidePanel";
 import NotesGallery from "@/components/app/NotesGallery";
 import VisionsBoard, { VisionLens } from "@/components/app/VisionsBoard";
-import { normalizeDayOrder, normalizeDaysOfWeek, type DayAssignment } from "@/lib/weekAgenda";
+import {
+  normalizeDayOrder,
+  normalizeDaysOfWeek,
+  removeAgendaDay,
+  type AgendaDay,
+  type DayAssignment,
+} from "@/lib/weekAgenda";
 import {
   CaretLeft,
   CaretRight,
@@ -504,6 +510,38 @@ export default function Dashboard() {
       workItemApi.update(itemId, { daysOfWeek: normalizedDays }).catch(console.error);
     },
     []
+  );
+
+  // Bỏ một việc khỏi đúng một thứ: việc vẫn còn trong Planner và các thứ khác.
+  const handleRemoveFromDay = useCallback(
+    (groupId: string | number, offset: number, itemId: string | number, day: AgendaDay) => {
+      const key = `${groupId}:${offset}`;
+      const item = (workItemsMap[key] ?? []).find((candidate) => candidate.id === itemId);
+      if (!item) return;
+
+      const previousDays = normalizeDaysOfWeek(item.daysOfWeek);
+      const nextDays = removeAgendaDay(previousDays, day);
+      if (nextDays.length === previousDays.length) return;
+
+      setWorkItemsMap((prev) => ({
+        ...prev,
+        [key]: (prev[key] ?? []).map((entry) =>
+          entry.id === itemId ? { ...entry, daysOfWeek: nextDays } : entry
+        ),
+      }));
+      workItemApi.update(itemId, { daysOfWeek: nextDays }).catch(console.error);
+
+      const dayName = [t.mon, t.tue, t.wed, t.thu, t.fri, t.sat, t.sun][day - 1];
+      const label = item.content.length > 30 ? `${item.content.slice(0, 30)}…` : item.content;
+      setToast({
+        text: isVietnamese
+          ? `Đã bỏ "${label}" khỏi ${dayName}. Việc vẫn còn trong Planner.`
+          : `Removed "${label}" from ${dayName}. The task stays in the Planner.`,
+        actionText: t.undo,
+        onAction: () => handleAssignDays(groupId, offset, itemId, previousDays),
+      });
+    },
+    [handleAssignDays, isVietnamese, t, workItemsMap]
   );
 
   const applyDayAssignments = useCallback((assignments: DayAssignment[], offset: number) => {
@@ -1723,6 +1761,7 @@ export default function Dashboard() {
               onAssignDays={handleAssignDays}
               onUpdateItem={handleUpdateItem}
               onDeleteItem={handleDeleteItem}
+              onRemoveFromDay={handleRemoveFromDay}
               onCycleStatus={handleCycleStatus}
               onAutoSchedule={handleAutoSchedule}
               onReorderDay={(day, orderedIds) => handleReorderDay(day, orderedIds, viewOffset)}

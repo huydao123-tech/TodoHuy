@@ -22,5 +22,5 @@ Skill evon:ui-ux đọc file này trước khi dựng. Sửa tay được; file 
 
 ## Màn đã dựng
 - `/dashboard` Planner: 3 cột tuần trượt, mỗi đầu việc một thẻ; chỉ có mục tiêu, việc, ghi chú — không có trạng thái
-- `/dashboard` Việc cần làm: hàng đợi "Chưa xếp thứ" + 7 thẻ thứ 2→CN; mỗi việc chọn được nhiều thứ trong tuần (việc lặp lại), thêm việc theo đầu việc Planner; kéo-thả đổi thứ tự trong từng thứ (lưu riêng theo ngày); "Tự xếp lịch" rải việc chưa xếp vào các thứ còn lại (không giới hạn số việc/ngày, việc đang làm trước, có Hoàn tác); tuần cũ chỉ xem
+- `/dashboard` Việc cần làm: hàng đợi "Chưa xếp thứ" + 7 thẻ thứ 2→CN; mỗi việc chọn được nhiều thứ trong tuần (việc lặp lại), thêm việc theo đầu việc Planner; kéo-thả đổi thứ tự trong từng thứ (lưu riêng theo ngày); nút "bỏ khỏi thứ này" chỉ gỡ việc khỏi ngày đó (việc vẫn còn trong Planner, bỏ hết thứ thì về hàng đợi), xoá hẳn việc nằm trong hộp chi tiết; "Tự xếp lịch" rải việc chưa xếp vào các thứ còn lại (không giới hạn số việc/ngày, việc đang làm trước, có Hoàn tác); tuần cũ chỉ xem
 - `/dashboard` Tầm nhìn, Ghi chú; `/garden` Văn phòng; `/` landing

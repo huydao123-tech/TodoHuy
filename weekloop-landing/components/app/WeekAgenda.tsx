@@ -5,6 +5,7 @@ import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "re
 import {
   ArrowsClockwise,
   CalendarBlank,
+  CalendarX,
   CheckCircle,
   Circle,
   Clock,
@@ -12,7 +13,6 @@ import {
   FileText,
   Plus,
   Sparkle,
-  Trash,
   X,
 } from "@phosphor-icons/react";
 import type { TaskGroup, WorkItemData, WorkItemStatus } from "@/lib/mockData";
@@ -184,6 +184,12 @@ export interface WeekAgendaProps {
     updates: { content?: string; note?: string; status?: WorkItemStatus },
   ) => void;
   onDeleteItem: (groupId: string | number, offset: number, itemId: string | number) => void;
+  onRemoveFromDay: (
+    groupId: string | number,
+    offset: number,
+    itemId: string | number,
+    day: AgendaDay,
+  ) => void;
   onCycleStatus: (groupId: string | number, offset: number, itemId: string | number) => void;
   onAutoSchedule: (assignments: DayAssignment[]) => void;
   onReorderDay: (day: AgendaDay, orderedIds: (string | number)[]) => void;
@@ -198,6 +204,7 @@ export default function WeekAgenda({
   onAssignDays,
   onUpdateItem,
   onDeleteItem,
+  onRemoveFromDay,
   onCycleStatus,
   onAutoSchedule,
   onReorderDay,
@@ -408,15 +415,17 @@ export default function WeekAgenda({
               dayLabel={dayLabel}
               onChange={(nextDays) => onAssignDays(task.taskGroupId, viewOffset, task.id, nextDays)}
             />
-            <button
-              type="button"
-              className="agenda-delete"
-              onClick={() => onDeleteItem(task.taskGroupId, viewOffset, task.id)}
-              title={t.delete}
-              aria-label={t.delete}
-            >
-              <Trash size={12} />
-            </button>
+            {scheduled && day !== undefined && (
+              <button
+                type="button"
+                className="agenda-remove"
+                onClick={() => onRemoveFromDay(task.taskGroupId, viewOffset, task.id, day)}
+                title={t.agendaRemoveFromDay}
+                aria-label={t.agendaRemoveFromDay}
+              >
+                <CalendarX size={13} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1169,7 +1178,7 @@ export default function WeekAgenda({
           font-weight: 600;
           cursor: pointer;
         }
-        .agenda-delete {
+        .agenda-remove {
           background: none;
           border: none;
           padding: 0.15rem;
@@ -1177,7 +1186,7 @@ export default function WeekAgenda({
           color: var(--text-faint);
           cursor: pointer;
         }
-        .agenda-delete:hover { color: var(--red, #DC2626); }
+        .agenda-remove:hover { color: var(--accent); }
         .agenda-card-foot {
           border-top: 1px solid var(--border);
           padding: 0.3rem 0.5rem 0.4rem;
@@ -1271,7 +1280,7 @@ export default function WeekAgenda({
         .agenda-status:focus-visible,
         .agenda-grip:focus-visible,
         .agenda-add:focus-visible,
-        .agenda-delete:focus-visible,
+        .agenda-remove:focus-visible,
         .agenda-toggle:focus-visible,
         .agenda-auto:focus-visible,
         .agenda-daypick-btn:focus-visible,
