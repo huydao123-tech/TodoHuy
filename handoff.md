@@ -2,6 +2,8 @@
 
 > Cập nhật: 18/11/2026 · Nhánh: `main` · Repo: `huydao123-tech/TodoHuy`
 > Tài liệu này ghi lại toàn bộ thay đổi đã làm cho app trong phiên làm việc này, dùng để bàn giao cho người/phiên sau.
+>
+> **Quy ước cập nhật (chủ dự án yêu cầu):** mỗi khi code của app thay đổi, cập nhật file này **ngay trong cùng lần làm** — thêm commit vào bảng dưới, mô tả tính năng/hành vi mới, cập nhật mục kiểm tra và mục giới hạn. Không để handoff lệch code.
 
 ## 1. Trạng thái repo sau phiên
 
